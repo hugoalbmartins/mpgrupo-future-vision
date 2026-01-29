@@ -8,6 +8,8 @@ interface PDFData {
   dataGeracao: Date;
 }
 
+const MPGRUPO_LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
 export const generateSimulationPDF = (data: PDFData): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -15,26 +17,28 @@ export const generateSimulationPDF = (data: PDFData): void => {
   const margin = 20;
   let yPosition = margin;
 
-  const primaryColor = [139, 115, 85];
-  const goldColor = [212, 175, 55];
-  const textColor = [51, 51, 51];
-  const lightGray = [245, 245, 245];
+  const primaryColor = [139, 115, 85] as [number, number, number];
+  const goldColor = [212, 175, 55] as [number, number, number];
+  const textColor = [51, 51, 51] as [number, number, number];
+  const lightGray = [245, 245, 245] as [number, number, number];
+  const greenColor = [34, 139, 34] as [number, number, number];
+  const redColor = [220, 38, 38] as [number, number, number];
 
   doc.setTextColor(...textColor);
 
   doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  doc.rect(0, 0, pageWidth, 45, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('MPGrupo', margin, 20);
+  doc.text('MPGrupo', margin, 25);
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
-  doc.text('Relatório de Simulação Energética', margin, 30);
+  doc.text('Relatório de Simulação Energética', margin, 35);
 
-  yPosition = 50;
+  yPosition = 55;
 
   const addSection = (title: string, yStart: number): number => {
     doc.setFillColor(...goldColor);
@@ -156,11 +160,11 @@ export const generateSimulationPDF = (data: PDFData): void => {
     doc.text(`Total: €${resultado.subtotal.toFixed(2)}`, col2X, yPosition + 12);
 
     if (resultado.poupanca > 0) {
-      doc.setTextColor(34, 139, 34);
+      doc.setTextColor(...greenColor);
       doc.text(`Poupança: €${resultado.poupanca.toFixed(2)}`, col2X, yPosition + 17);
     } else if (resultado.poupanca < 0) {
-      doc.setTextColor(220, 38, 38);
-      doc.text(`Mais caro: €${Math.abs(resultado.poupanca).toFixed(2)}`, col2X, yPosition + 17);
+      doc.setTextColor(...redColor);
+      doc.text(`Sem poupança: €${Math.abs(resultado.poupanca).toFixed(2)}`, col2X, yPosition + 17);
     } else {
       doc.setTextColor(...textColor);
       doc.text(`Igual ao atual`, col2X, yPosition + 17);
@@ -168,12 +172,6 @@ export const generateSimulationPDF = (data: PDFData): void => {
 
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'normal');
-
-    if (resultado.poupanca_potencial_dd_fe && resultado.poupanca_potencial_dd_fe > 0) {
-      doc.setFontSize(8);
-      doc.setTextColor(0, 102, 204);
-      doc.text(`+ Poupança potencial com DD/FE: €${resultado.poupanca_potencial_dd_fe.toFixed(2)}`, col2X, yPosition + 22);
-    }
 
     yPosition += 27;
   }
@@ -189,7 +187,7 @@ export const generateSimulationPDF = (data: PDFData): void => {
 
   const melhorOpcao = data.resultados[0];
   if (melhorOpcao && melhorOpcao.poupanca > 0) {
-    const poupancaAnual = (melhorOpcao.poupanca / data.simulacao.dias_fatura) * 365;
+    const poupancaAnual = melhorOpcao.poupanca * 12;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -207,17 +205,153 @@ export const generateSimulationPDF = (data: PDFData): void => {
     yPosition += 25;
   }
 
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, pageHeight - 25, pageWidth, 25, 'F');
+  const resultadosComAlertaDDFE = data.resultados.filter((r) => {
+    if (!r.poupanca_potencial_dd_fe || r.poupanca_potencial_dd_fe <= 0) return false;
+    const poupancaTotalComDDFE = data.custoAtual - (r.subtotal - r.poupanca_potencial_dd_fe);
+    return poupancaTotalComDDFE > 0;
+  });
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MPGrupo - Soluções Energéticas', margin, pageHeight - 15);
-  doc.text('www.mpgrupo.pt | contacto@mpgrupo.pt', margin, pageHeight - 10);
+  if (resultadosComAlertaDDFE.length > 0) {
+    if (yPosition > pageHeight - 60) {
+      doc.addPage();
+      yPosition = margin;
+    }
 
-  doc.setFontSize(8);
-  doc.text(`Gerado em ${data.dataGeracao.toLocaleString('pt-PT')}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+    yPosition = addSection('Poupança Adicional com Débito Direto e Fatura Eletrónica', yPosition);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textColor);
+
+    for (const resultado of resultadosComAlertaDDFE) {
+      if (yPosition > pageHeight - 30) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      const poupancaTotalComDDFE = data.custoAtual - (resultado.subtotal - resultado.poupanca_potencial_dd_fe!);
+      const poupancaAnualComDDFE = poupancaTotalComDDFE * 12;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${resultado.operadora.nome}:`, margin + 5, yPosition);
+
+      doc.setFont('helvetica', 'normal');
+      yPosition += 5;
+      doc.text(`Caso aderisse com Débito Direto e Fatura Eletrónica, a poupança total`, margin + 5, yPosition);
+      yPosition += 4;
+      doc.text(`em relação à fatura atual seria de `, margin + 5, yPosition);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.text(`€${poupancaTotalComDDFE.toFixed(2)}`, margin + 70, yPosition);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...textColor);
+      doc.text(` por mês`, margin + 95, yPosition);
+
+      yPosition += 5;
+      doc.text(`Projeção anual: `, margin + 5, yPosition);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.text(`€${poupancaAnualComDDFE.toFixed(2)}`, margin + 35, yPosition);
+
+      doc.setTextColor(...textColor);
+      doc.setFont('helvetica', 'normal');
+
+      yPosition += 10;
+    }
+  }
+
+  const resultadosComDescontoTemp = data.resultados.filter((r) => {
+    if (!r.desconto_temporario || r.desconto_temporario.disponivel) return false;
+    const custoMensalAtual = (data.custoAtual / data.simulacao.dias_fatura) * 30;
+    const custoMensalSimulado = (r.subtotal / data.simulacao.dias_fatura) * 30;
+    const custoComDesconto = custoMensalSimulado - r.desconto_temporario.valor_mensal;
+    const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
+    return poupancaMensalTotal > 0;
+  });
+
+  if (resultadosComDescontoTemp.length > 0) {
+    if (yPosition > pageHeight - 60) {
+      doc.addPage();
+      yPosition = margin;
+    }
+
+    yPosition = addSection('Descontos Promocionais Disponíveis', yPosition);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textColor);
+
+    for (const resultado of resultadosComDescontoTemp) {
+      if (yPosition > pageHeight - 30) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      const dt = resultado.desconto_temporario!;
+      const requisitos: string[] = [];
+      if (dt.requer_dd && !data.simulacao.debito_direto) requisitos.push('Débito Direto');
+      if (dt.requer_fe && !data.simulacao.fatura_eletronica) requisitos.push('Fatura Eletrónica');
+
+      const custoMensalAtual = (data.custoAtual / data.simulacao.dias_fatura) * 30;
+      const custoMensalSimulado = (resultado.subtotal / data.simulacao.dias_fatura) * 30;
+      const custoComDesconto = custoMensalSimulado - dt.valor_mensal;
+      const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
+      const poupancaTotalPeriodo = poupancaMensalTotal * dt.duracao_meses;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${resultado.operadora.nome}:`, margin + 5, yPosition);
+
+      doc.setFont('helvetica', 'normal');
+      yPosition += 5;
+      doc.text(`Caso aderisse com ${requisitos.join(' e ')}, a poupança total`, margin + 5, yPosition);
+      yPosition += 4;
+      doc.text(`em relação à fatura atual seria de `, margin + 5, yPosition);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.text(`€${poupancaTotalPeriodo.toFixed(2)}`, margin + 70, yPosition);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...textColor);
+      yPosition += 4;
+      doc.text(`durante os primeiros ${dt.duracao_meses} ${dt.duracao_meses === 1 ? 'mês' : 'meses'}`, margin + 5, yPosition);
+
+      if (dt.descricao) {
+        yPosition += 4;
+        doc.setFontSize(8);
+        doc.text(`(${dt.descricao})`, margin + 5, yPosition);
+        doc.setFontSize(9);
+      }
+
+      doc.setTextColor(...textColor);
+
+      yPosition += 10;
+    }
+  }
+
+  if (yPosition > pageHeight - 40) {
+    doc.addPage();
+  }
+
+  const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber;
+  for (let i = 1; i <= currentPage; i++) {
+    doc.setPage(i);
+
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, pageHeight - 25, pageWidth, 25, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('MPGrupo - Soluções Energéticas', margin, pageHeight - 15);
+    doc.text('www.mpgrupo.pt | contacto@mpgrupo.pt', margin, pageHeight - 10);
+
+    doc.setFontSize(8);
+    doc.text(`Gerado em ${data.dataGeracao.toLocaleString('pt-PT')}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+  }
 
   const fileName = `MPGrupo_Simulacao_${data.simulacao.operadora_atual.replace(/\s+/g, '_')}_${data.dataGeracao.toISOString().split('T')[0]}.pdf`;
   doc.save(fileName);
