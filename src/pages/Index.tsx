@@ -8,6 +8,7 @@ import PartnershipsSection from "@/components/PartnershipsSection";
 import ContactSection from "@/components/ContactSection";
 import ContactForm from "@/components/ContactForm";
 import Footer from "@/components/Footer";
+import FloatingSocialButtons from "@/components/FloatingSocialButtons";
 
 const Index = () => {
   return (
@@ -22,6 +23,7 @@ const Index = () => {
       <ContactSection />
       <ContactForm />
       <Footer />
+      <FloatingSocialButtons />
     </div>
   );
 };
