@@ -45,11 +45,11 @@ const Footer = () => {
           >
             <h4 className="font-display text-lg text-foreground mb-6">Serviços</h4>
             <ul className="space-y-3">
-              {["Energia Solar", "Telecomunicações", "Energia Geral", "Parcerias D2D"].map(
+              {["Energia Solar", "Telecomunicações", "Energia Geral"].map(
                 (item) => (
                   <li key={item}>
                     <a
-                      href="#"
+                      href="#services"
                       className="font-body text-cream-muted hover:text-gold transition-colors duration-300"
                     >
                       {item}
@@ -69,13 +69,18 @@ const Footer = () => {
           >
             <h4 className="font-display text-lg text-foreground mb-6">Empresa</h4>
             <ul className="space-y-3">
-              {["Sobre Nós", "Carreiras", "Parcerias", "Contactos"].map((item) => (
-                <li key={item}>
+              {[
+                { name: "Sobre Nós", href: "#about" },
+                { name: "Carreiras", href: "#careers" },
+                { name: "Parcerias", href: "#partnerships" },
+                { name: "Contactos", href: "#contacts" },
+              ].map((item) => (
+                <li key={item.name}>
                   <a
-                    href="#"
+                    href={item.href}
                     className="font-body text-cream-muted hover:text-gold transition-colors duration-300"
                   >
-                    {item}
+                    {item.name}
                   </a>
                 </li>
               ))}
@@ -94,7 +99,7 @@ const Footer = () => {
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={1.5} />
                 <span className="font-body text-cream-muted">
-                  Lisboa, Portugal
+                  Portugal Continental
                 </span>
               </li>
               <li className="flex items-center gap-3">

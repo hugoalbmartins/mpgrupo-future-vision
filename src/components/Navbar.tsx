@@ -5,7 +5,7 @@ import { Menu, X } from "lucide-react";
 const navLinks = [
   { label: "Início", href: "#" },
   { label: "Serviços", href: "#services" },
-  { label: "Contacto", href: "#contact" },
+  { label: "Contacto", href: "#contacts" },
 ];
 
 const Navbar = () => {
@@ -49,7 +49,7 @@ const Navbar = () => {
                 </a>
               ))}
               <a
-                href="#contact"
+                href="#contacts"
                 className="px-6 py-2.5 bg-gold text-primary-foreground font-body text-sm font-medium rounded-lg hover:bg-gold-light transition-all duration-300"
               >
                 Fale Connosco
@@ -99,7 +99,7 @@ const Navbar = () => {
             </motion.a>
           ))}
           <motion.a
-            href="#contact"
+            href="#contacts"
             onClick={() => setIsMobileMenuOpen(false)}
             initial={{ opacity: 0, y: 20 }}
             animate={{
