@@ -69,7 +69,7 @@ const Footer = () => {
                   { name: "Sobre Nós", href: "#about" },
                   { name: "Carreiras", href: "#careers" },
                   { name: "Parcerias", href: "#partnerships" },
-                  { name: "Contactos", href: "#contacts" },
+                  { name: "Contactos", href: "#contact" },
                 ].map((item) => (
                   <li key={item.name}>
                     <a

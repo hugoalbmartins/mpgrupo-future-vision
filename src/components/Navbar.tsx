@@ -1,6 +1,7 @@
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import logo from "@/assets/mpgrupo_semfundo.png";
 
 const navLinks = [
   { label: "Início", href: "#" },
@@ -32,9 +33,16 @@ const Navbar = () => {
       >
         <nav className="container mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo Left */}
-            <a href="#" className="font-display text-2xl gold-text font-medium">
-              MPgrupo
+            {/* Logo and Name Left */}
+            <a href="#" className="flex items-center gap-3">
+              <img
+                src={logo}
+                alt="MPgrupo Logo"
+                className="h-12 w-auto"
+              />
+              <span className="font-display text-2xl gold-text font-medium hidden sm:block">
+                MPgrupo
+              </span>
             </a>
 
             {/* Desktop Navigation */}
@@ -50,18 +58,11 @@ const Navbar = () => {
                 </a>
               ))}
               <a
-                href="#contacts"
+                href="#contact"
                 className="px-6 py-2.5 bg-gold text-primary-foreground font-body text-sm font-medium rounded-lg hover:bg-gold-light transition-all duration-300"
               >
                 Fale Connosco
               </a>
-
-              {/* Logo Right */}
-              <img
-                src="/src/assets/mpgrupo_semfundo.png"
-                alt="MPgrupo Logo"
-                className="h-12 w-auto"
-              />
             </div>
 
             {/* Mobile Menu Button */}
@@ -107,7 +108,7 @@ const Navbar = () => {
             </motion.a>
           ))}
           <motion.a
-            href="#contacts"
+            href="#contact"
             onClick={() => setIsMobileMenuOpen(false)}
             initial={{ opacity: 0, y: 20 }}
             animate={{
