@@ -11,6 +11,8 @@ const OperadorasManager = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -45,7 +47,64 @@ const OperadorasManager = () => {
     }
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadLogo = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('operadoras-logos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('operadoras-logos')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      return null;
+    }
+  };
+
+  const deleteOldLogo = async (logoUrl: string) => {
+    try {
+      const fileName = logoUrl.split('/').pop();
+      if (fileName) {
+        await supabase.storage
+          .from('operadoras-logos')
+          .remove([fileName]);
+      }
+    } catch (error) {
+      console.error('Error deleting old logo:', error);
+    }
+  };
+
   const openDialog = (operadora?: Operadora) => {
+    setLogoFile(null);
+    setLogoPreview('');
+
     if (operadora) {
       setEditingId(operadora.id);
       setFormData({
@@ -59,6 +118,9 @@ const OperadorasManager = () => {
         ativa: operadora.ativa,
       });
       setPotencias(operadora.valor_diario_potencias as Record<string, number>);
+      if (operadora.logotipo_url) {
+        setLogoPreview(operadora.logotipo_url);
+      }
     } else {
       setEditingId(null);
       setFormData({
@@ -81,8 +143,26 @@ const OperadorasManager = () => {
     setSubmitting(true);
 
     try {
+      let logoUrl = formData.logotipo_url;
+
+      if (logoFile) {
+        const uploadedUrl = await uploadLogo(logoFile);
+        if (!uploadedUrl) {
+          toast.error('Erro ao fazer upload do logótipo');
+          setSubmitting(false);
+          return;
+        }
+
+        if (editingId && formData.logotipo_url) {
+          await deleteOldLogo(formData.logotipo_url);
+        }
+
+        logoUrl = uploadedUrl;
+      }
+
       const dataToSubmit = {
         ...formData,
+        logotipo_url: logoUrl,
         valor_diario_potencias: potencias,
       };
 
@@ -217,15 +297,23 @@ const OperadorasManager = () => {
 
               <div>
                 <label className="font-body text-sm text-cream-muted mb-2 block">
-                  URL do Logótipo
+                  Logótipo
                 </label>
                 <input
-                  type="url"
-                  value={formData.logotipo_url}
-                  onChange={(e) => setFormData({ ...formData, logotipo_url: e.target.value })}
+                  type="file"
+                  accept="image/jpeg,image/png,image/svg+xml,image/webp"
+                  onChange={handleLogoChange}
                   className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-                  placeholder="https://exemplo.com/logo.png"
                 />
+                {logoPreview && (
+                  <div className="mt-2">
+                    <img
+                      src={logoPreview}
+                      alt="Preview"
+                      className="h-16 object-contain bg-white rounded p-2 border border-border"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
