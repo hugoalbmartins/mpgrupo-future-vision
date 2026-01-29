@@ -44,10 +44,14 @@ export interface Operadora {
 export interface ConfiguracaoDesconto {
   id: string;
   operadora_id: string;
+  desconto_base_potencia: number;
+  desconto_base_energia: number;
   desconto_dd_potencia: number;
   desconto_dd_energia: number;
   desconto_fe_potencia: number;
   desconto_fe_energia: number;
+  desconto_dd_fe_potencia: number;
+  desconto_dd_fe_energia: number;
   created_at: string;
   updated_at: string;
 }

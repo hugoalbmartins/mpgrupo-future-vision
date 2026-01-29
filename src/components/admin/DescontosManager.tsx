@@ -48,10 +48,14 @@ const DescontosManager = () => {
         const { error } = await supabase
           .from('configuracoes_descontos')
           .update({
+            desconto_base_potencia: desconto.desconto_base_potencia,
+            desconto_base_energia: desconto.desconto_base_energia,
             desconto_dd_potencia: desconto.desconto_dd_potencia,
             desconto_dd_energia: desconto.desconto_dd_energia,
             desconto_fe_potencia: desconto.desconto_fe_potencia,
             desconto_fe_energia: desconto.desconto_fe_energia,
+            desconto_dd_fe_potencia: desconto.desconto_dd_fe_potencia,
+            desconto_dd_fe_energia: desconto.desconto_dd_fe_energia,
           })
           .eq('id', desconto.id);
 
@@ -61,10 +65,14 @@ const DescontosManager = () => {
           .from('configuracoes_descontos')
           .insert([{
             operadora_id: operadoraId,
+            desconto_base_potencia: desconto?.desconto_base_potencia || 0,
+            desconto_base_energia: desconto?.desconto_base_energia || 0,
             desconto_dd_potencia: desconto?.desconto_dd_potencia || 0,
             desconto_dd_energia: desconto?.desconto_dd_energia || 0,
             desconto_fe_potencia: desconto?.desconto_fe_potencia || 0,
             desconto_fe_energia: desconto?.desconto_fe_energia || 0,
+            desconto_dd_fe_potencia: desconto?.desconto_dd_fe_potencia || 0,
+            desconto_dd_fe_energia: desconto?.desconto_dd_fe_energia || 0,
           }]);
 
         if (error) throw error;
@@ -86,10 +94,14 @@ const DescontosManager = () => {
         ...(prev[operadoraId] || {
           id: '',
           operadora_id: operadoraId,
+          desconto_base_potencia: 0,
+          desconto_base_energia: 0,
           desconto_dd_potencia: 0,
           desconto_dd_energia: 0,
           desconto_fe_potencia: 0,
           desconto_fe_energia: 0,
+          desconto_dd_fe_potencia: 0,
+          desconto_dd_fe_energia: 0,
           created_at: '',
           updated_at: '',
         }),
@@ -110,23 +122,45 @@ const DescontosManager = () => {
     <div>
       <div className="mb-6">
         <h2 className="font-display text-2xl text-foreground mb-2">Configuração de Descontos</h2>
-        <p className="font-body text-sm text-cream-muted">
-          Configure os descontos aplicáveis a cada operadora para Débito Direto (DD) e Fatura Eletrónica (FE).
+        <p className="font-body text-sm text-cream-muted mb-4">
+          Configure os descontos aplicáveis a cada operadora em 4 cenários diferentes.
         </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <div className="text-center">
+            <div className="font-body font-medium text-foreground text-sm mb-1">Desconto Base</div>
+            <div className="font-body text-xs text-cream-muted">Sem DD nem FE</div>
+          </div>
+          <div className="text-center">
+            <div className="font-body font-medium text-foreground text-sm mb-1">Desconto DD</div>
+            <div className="font-body text-xs text-cream-muted">Apenas Débito Direto</div>
+          </div>
+          <div className="text-center">
+            <div className="font-body font-medium text-foreground text-sm mb-1">Desconto FE</div>
+            <div className="font-body text-xs text-cream-muted">Apenas Fatura Eletrónica</div>
+          </div>
+          <div className="text-center">
+            <div className="font-body font-medium text-foreground text-sm mb-1">Desconto DD+FE</div>
+            <div className="font-body text-xs text-cream-muted">Ambos combinados</div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">
         {operadoras.map((operadora) => {
           const desconto = descontos[operadora.id] || {
+            desconto_base_potencia: 0,
+            desconto_base_energia: 0,
             desconto_dd_potencia: 0,
             desconto_dd_energia: 0,
             desconto_fe_potencia: 0,
             desconto_fe_energia: 0,
+            desconto_dd_fe_potencia: 0,
+            desconto_dd_fe_energia: 0,
           };
 
           return (
             <div key={operadora.id} className="p-6 bg-muted rounded-lg border border-border">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   {operadora.logotipo_url && (
                     <img
@@ -141,14 +175,48 @@ const DescontosManager = () => {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-4">
-                  <h4 className="font-body font-medium text-foreground text-sm">
-                    Débito Direto (DD)
+                  <h4 className="font-body font-medium text-foreground text-sm pb-2 border-b border-border">
+                    Desconto Base
                   </h4>
                   <div>
                     <label className="font-body text-xs text-cream-muted mb-2 block">
-                      % Desconto no Termo de Potência
+                      % Potência
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={desconto.desconto_base_potencia}
+                      onChange={(e) => updateDesconto(operadora.id, 'desconto_base_potencia', parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-body text-xs text-cream-muted mb-2 block">
+                      % Energia
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={desconto.desconto_base_energia}
+                      onChange={(e) => updateDesconto(operadora.id, 'desconto_base_energia', parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-body font-medium text-foreground text-sm pb-2 border-b border-border">
+                    Apenas DD
+                  </h4>
+                  <div>
+                    <label className="font-body text-xs text-cream-muted mb-2 block">
+                      % Potência
                     </label>
                     <input
                       type="number"
@@ -162,7 +230,7 @@ const DescontosManager = () => {
                   </div>
                   <div>
                     <label className="font-body text-xs text-cream-muted mb-2 block">
-                      % Desconto no Termo de Energia
+                      % Energia
                     </label>
                     <input
                       type="number"
@@ -177,12 +245,12 @@ const DescontosManager = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="font-body font-medium text-foreground text-sm">
-                    Fatura Eletrónica (FE)
+                  <h4 className="font-body font-medium text-foreground text-sm pb-2 border-b border-border">
+                    Apenas FE
                   </h4>
                   <div>
                     <label className="font-body text-xs text-cream-muted mb-2 block">
-                      % Desconto no Termo de Potência
+                      % Potência
                     </label>
                     <input
                       type="number"
@@ -196,7 +264,7 @@ const DescontosManager = () => {
                   </div>
                   <div>
                     <label className="font-body text-xs text-cream-muted mb-2 block">
-                      % Desconto no Termo de Energia
+                      % Energia
                     </label>
                     <input
                       type="number"
@@ -209,9 +277,43 @@ const DescontosManager = () => {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-body font-medium text-foreground text-sm pb-2 border-b border-border">
+                    DD + FE
+                  </h4>
+                  <div>
+                    <label className="font-body text-xs text-cream-muted mb-2 block">
+                      % Potência
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={desconto.desconto_dd_fe_potencia}
+                      onChange={(e) => updateDesconto(operadora.id, 'desconto_dd_fe_potencia', parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-body text-xs text-cream-muted mb-2 block">
+                      % Energia
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={desconto.desconto_dd_fe_energia}
+                      onChange={(e) => updateDesconto(operadora.id, 'desconto_dd_fe_energia', parseFloat(e.target.value) || 0)}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="flex justify-end mt-4">
+              <div className="flex justify-end mt-6 pt-4 border-t border-border">
                 <button
                   onClick={() => handleSave(operadora.id)}
                   disabled={saving === operadora.id}
