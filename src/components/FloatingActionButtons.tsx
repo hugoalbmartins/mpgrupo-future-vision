@@ -115,7 +115,7 @@ const FloatingActionButtons = ({ onSimulatorClick }: FloatingActionButtonsProps)
         </motion.button>
       </div>
 
-      <div className="md:hidden fixed bottom-6 left-4 z-50">
+      <div className="md:hidden fixed bottom-[104px] right-6 z-50">
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -123,15 +123,26 @@ const FloatingActionButtons = ({ onSimulatorClick }: FloatingActionButtonsProps)
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute bottom-full left-0 mb-3 flex flex-col gap-2"
+              className="absolute bottom-full right-0 mb-3 flex flex-col gap-2 items-end"
             >
+              <motion.button
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 20, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={onSimulatorClick}
+                className="bg-gradient-to-r from-gold to-gold-light text-primary-foreground p-3 rounded-full shadow-lg"
+              >
+                <Calculator className="w-5 h-5" />
+              </motion.button>
               {socialLinks.map((social, index) => (
                 <motion.a
                   key={social.label}
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 20, opacity: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  transition={{ duration: 0.3, delay: (index + 1) * 0.05 }}
                   whileTap={{ scale: 0.9 }}
                   href={social.href}
                   target="_blank"
@@ -142,17 +153,6 @@ const FloatingActionButtons = ({ onSimulatorClick }: FloatingActionButtonsProps)
                   <social.icon className="w-5 h-5" />
                 </motion.a>
               ))}
-              <motion.button
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 20, opacity: 0 }}
-                transition={{ duration: 0.3, delay: socialLinks.length * 0.05 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={onSimulatorClick}
-                className="bg-gradient-to-r from-gold to-gold-light text-primary-foreground p-3 rounded-full shadow-lg"
-              >
-                <Calculator className="w-5 h-5" />
-              </motion.button>
             </motion.div>
           )}
         </AnimatePresence>

@@ -155,3 +155,51 @@
     50% { opacity: 1; }
   }
 }
+
+/* Custom Scrollbar Styling - Integrated Design */
+@layer base {
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, hsl(var(--gold)) 0%, hsl(var(--gold-dark)) 100%);
+    border-radius: 10px;
+    border: 2px solid hsl(var(--background));
+    transition: background 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, hsl(var(--gold-light)) 0%, hsl(var(--gold)) 100%);
+    box-shadow: 0 0 8px hsla(43, 56%, 52%, 0.3);
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--gold));
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--gold)) hsl(var(--background));
+  }
+
+  /* Mobile - thinner scrollbar */
+  @media (max-width: 768px) {
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      border: 1px solid hsl(var(--background));
+    }
+  }
+}
