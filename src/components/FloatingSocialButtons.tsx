@@ -10,7 +10,7 @@ const socialLinks = [
   },
   { icon: Linkedin, href: "https://www.linkedin.com/company/mp-grupo", label: "LinkedIn", isWhatsApp: false },
   { icon: Instagram, href: "#", label: "Instagram", isWhatsApp: false },
-  { icon: Facebook, href: "https://www.facebook.com/profile.php?id=61571823613093", label: "Facebook", isWhatsApp: false },
+  { icon: Facebook, href: "https://www.facebook.com/academiadeformacaoempreendedores", label: "Facebook", isWhatsApp: false },
 ];
 
 const FloatingSocialButtons = () => {

@@ -18,7 +18,7 @@ const FloatingActionButtons = ({ onSimulatorClick }: FloatingActionButtonsProps)
     },
     {
       icon: Facebook,
-      href: 'https://www.facebook.com/profile.php?id=61571823613093',
+      href: 'https://www.facebook.com/academiadeformacaoempreendedores',
       label: 'Facebook',
       color: 'from-[#1877F2] to-[#4267B2]'
     },
