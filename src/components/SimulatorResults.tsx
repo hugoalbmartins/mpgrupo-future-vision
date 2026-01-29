@@ -483,29 +483,30 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </div>
           )}
 
-          <div className="flex justify-between items-center gap-3 pt-4 border-t border-border">
+          <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 pt-4 border-t border-border">
             <button
               type="button"
               onClick={onReset}
-              className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg font-body text-cream-muted hover:text-foreground transition-all"
+              className="flex items-center justify-center gap-2 px-6 py-3 border border-border rounded-lg font-body text-cream-muted hover:text-foreground transition-all"
             >
               <ArrowLeft className="w-5 h-5" />
               Nova Simulação
             </button>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={handleExportPDF}
-                className="flex items-center gap-2 px-6 py-3 border-2 border-gold text-gold rounded-lg font-body font-medium hover:bg-gold hover:text-primary-foreground transition-all"
+                className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-gold text-gold rounded-lg font-body font-medium hover:bg-gold hover:text-primary-foreground transition-all"
               >
                 <Download className="w-5 h-5" />
-                Exportar PDF
+                <span className="hidden sm:inline">Exportar PDF</span>
+                <span className="sm:hidden">PDF</span>
               </button>
               <button
                 type="button"
                 onClick={handleAdesaoWhatsApp}
-                className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg font-body font-medium hover:bg-green-600 transition-all shadow-lg hover:shadow-xl"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg font-body font-medium hover:bg-green-600 transition-all shadow-lg hover:shadow-xl"
               >
                 <MessageCircle className="w-5 h-5" />
                 Quero aderir!
