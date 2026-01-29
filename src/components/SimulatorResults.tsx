@@ -22,6 +22,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   useEffect(() => {
     if (open) {
       calcularResultados();
+
+      const interval = setInterval(() => {
+        calcularResultados();
+      }, 60000);
+
+      return () => clearInterval(interval);
     }
   }, [open, simulacao]);
 
@@ -246,9 +252,9 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     const isBest = resultado === melhorResultado;
 
     if (isBestWithSavings) {
-      return `${baseClass} bg-green-50 dark:bg-green-900/20 border-green-500/50`;
+      return `${baseClass} border-green-500 border-2`;
     } else if (isBest) {
-      return `${baseClass} bg-gold/10 border-border`;
+      return `${baseClass} border-border`;
     }
     return `${baseClass} border-border`;
   };
@@ -432,11 +438,11 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                     return (
                       <th
                         key={r.operadora.id}
-                        className={`p-3 text-center font-body font-medium text-foreground border ${
+                        className={`p-3 text-center font-body font-medium text-foreground border-2 ${
                           isBestWithSavings
-                            ? 'bg-green-100 dark:bg-green-900/30 border-green-500'
+                            ? 'border-green-500'
                             : r === melhorResultado
-                            ? 'bg-gold/20 border-border'
+                            ? 'border-border'
                             : 'border-border'
                         }`}
                         style={isBestWithSavings ? {
@@ -803,15 +809,15 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                     const isBestWithSavings = r === melhorResultado && r.poupanca > 0;
                     const isBest = r === melhorResultado;
 
-                    let className = 'p-3 text-center font-body font-bold text-lg border ';
+                    let className = 'p-3 text-center font-body font-bold text-lg ';
                     if (isBestWithSavings) {
-                      className += 'bg-green-100 dark:bg-green-900/30 border-green-500 text-green-700 dark:text-green-400';
+                      className += 'border-2 border-green-500 text-green-700 dark:text-green-400';
                     } else if (isBest) {
-                      className += 'bg-gold/30 text-gold border-border';
+                      className += 'border text-gold border-border';
                     } else if (r.poupanca > 0) {
-                      className += 'text-green-600 border-border';
+                      className += 'border text-green-600 border-border';
                     } else {
-                      className += 'text-red-600 border-border';
+                      className += 'border text-red-600 border-border';
                     }
 
                     return (
