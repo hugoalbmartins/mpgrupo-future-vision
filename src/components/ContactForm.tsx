@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { ChevronRight, ChevronLeft, Send, User, Phone, Mail, MessageSquare, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
@@ -19,16 +21,29 @@ const subjects = [
   { value: "Análise da minha fatura", label: "Análise da Minha Fatura", icon: "📊" },
 ] as const;
 
-const ContactForm = () => {
+interface ContactFormProps {
+  simulationData?: {
+    operadora_atual: string;
+    operadora_interesse?: string;
+    potencia: number;
+    poupanca_estimada?: number;
+    dados_completos: unknown;
+  };
+}
+
+const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
   const [step, setStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [formData, setFormData] = useState<Partial<FormData>>({
     name: "",
     email: "",
     phone: "",
-    subject: undefined,
-    message: "",
+    subject: simulationData ? "Análise da minha fatura" : undefined,
+    message: simulationData
+      ? `Gostaria de saber mais sobre a mudança para ${simulationData.operadora_interesse || 'uma nova operadora'}.`
+      : "",
   });
 
   const totalSteps = 3;
@@ -75,9 +90,35 @@ const ContactForm = () => {
     }
   };
 
-  const handleSubmit = () => {
-    if (validateStep(step)) {
+  const handleSubmit = async () => {
+    if (!validateStep(step)) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.from('pedidos_contacto').insert({
+        nome: formData.name,
+        email: formData.email,
+        telefone: formData.phone,
+        operadora_atual: simulationData?.operadora_atual,
+        operadora_interesse: simulationData?.operadora_interesse,
+        potencia: simulationData?.potencia,
+        poupanca_estimada: simulationData?.poupanca_estimada,
+        dados_simulacao: simulationData?.dados_completos || null,
+        mensagem: `Assunto: ${formData.subject}\n\n${formData.message || ''}`,
+        origem: simulationData ? 'simulador' : 'web',
+        estado: 'novo',
+      });
+
+      if (error) throw error;
+
       setIsSubmitted(true);
+      toast.success('Pedido de contacto enviado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao enviar contacto:', error);
+      toast.error('Erro ao enviar pedido. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -367,9 +408,10 @@ const ContactForm = () => {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  className="flex items-center gap-2 px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium transition-all hover:bg-gold-light gold-glow"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium transition-all hover:bg-gold-light gold-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Enviar
+                  {isSubmitting ? 'Enviando...' : 'Enviar'}
                   <Send className="w-5 h-5" />
                 </button>
               )}
@@ -381,4 +423,5 @@ const ContactForm = () => {
   );
 };
 
+export type { ContactFormProps };
 export default ContactForm;

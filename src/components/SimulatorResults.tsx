@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulacaoInput, Operadora, ConfiguracaoDesconto, ResultadoComparacao } from '@/types/energy';
 import { supabase } from '@/lib/supabase';
-import { Loader2, TrendingDown, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, TrendingDown, AlertCircle, ArrowLeft, Download, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateSimulationPDF } from '@/lib/pdfGenerator';
+import { generateWhatsAppMessage, openWhatsApp, MPGRUPO_WHATSAPP } from '@/lib/whatsappUtils';
 
 interface SimulatorResultsProps {
   open: boolean;
@@ -182,6 +184,30 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     }).format(value);
   };
 
+  const handleExportPDF = () => {
+    try {
+      generateSimulationPDF({
+        simulacao,
+        custoAtual,
+        resultados,
+        dataGeracao: new Date(),
+      });
+      toast.success('Relatório PDF gerado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao gerar PDF');
+      console.error(error);
+    }
+  };
+
+  const handleWhatsAppContact = () => {
+    const message = generateWhatsAppMessage({
+      simulacao,
+      melhorResultado: resultados[0],
+      custoAtual,
+    });
+    openWhatsApp(MPGRUPO_WHATSAPP, message);
+  };
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -208,19 +234,42 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
 
         <div className="space-y-6 pt-4">
           {melhorResultado && melhorResultado.poupanca > 0 && (
-            <div className="p-6 bg-gold/10 border-2 border-gold rounded-lg">
-              <div className="flex items-center gap-3 mb-3">
-                <TrendingDown className="w-8 h-8 text-gold" />
-                <div>
-                  <h3 className="font-display text-2xl text-foreground">
-                    Maior Poupança: {formatCurrency(melhorResultado.poupanca)}
-                  </h3>
-                  <p className="font-body text-sm text-cream-muted">
-                    Com {melhorResultado.operadora.nome}
-                  </p>
+            <>
+              <div className="p-6 bg-gold/10 border-2 border-gold rounded-lg">
+                <div className="flex items-center gap-3 mb-3">
+                  <TrendingDown className="w-8 h-8 text-gold" />
+                  <div>
+                    <h3 className="font-display text-2xl text-foreground">
+                      Maior Poupança: {formatCurrency(melhorResultado.poupanca)}
+                    </h3>
+                    <p className="font-body text-sm text-cream-muted">
+                      Com {melhorResultado.operadora.nome}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              <div className="p-6 bg-green-500/10 border-2 border-green-500 rounded-lg">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h4 className="font-display text-xl text-foreground mb-2">
+                      Quer começar a poupar?
+                    </h4>
+                    <p className="font-body text-sm text-cream-muted">
+                      Fale connosco no WhatsApp e ajudamos com toda a mudança!
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppContact}
+                    className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg font-body font-medium hover:bg-green-600 transition-all whitespace-nowrap"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Contactar via WhatsApp
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           <div className="overflow-x-auto">
@@ -369,7 +418,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </div>
           )}
 
-          <div className="flex justify-between gap-3 pt-4 border-t border-border">
+          <div className="flex justify-between items-center gap-3 pt-4 border-t border-border">
             <button
               type="button"
               onClick={onReset}
@@ -378,13 +427,24 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
               <ArrowLeft className="w-5 h-5" />
               Nova Simulação
             </button>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="px-6 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
-            >
-              Fechar
-            </button>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 px-6 py-3 border-2 border-gold text-gold rounded-lg font-body font-medium hover:bg-gold hover:text-primary-foreground transition-all"
+              >
+                <Download className="w-5 h-5" />
+                Exportar PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="px-6 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       </DialogContent>
