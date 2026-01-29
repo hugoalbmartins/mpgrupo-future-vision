@@ -104,10 +104,10 @@ const Hero = () => {
               </motion.span>
             </a>
             <a
-              href="#solar"
+              href="#services"
               className="group inline-flex items-center justify-center gap-3 px-8 py-4 glass-card font-body font-medium text-foreground rounded-lg transition-all duration-300 hover:bg-white/10"
             >
-              Descobrir Energia Solar
+              Descobrir Serviços
             </a>
           </motion.div>
         </div>
