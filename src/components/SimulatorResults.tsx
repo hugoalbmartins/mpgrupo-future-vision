@@ -43,17 +43,23 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
         descontosMap[d.operadora_id] = d;
       });
 
+      const operadorasComCiclo = operadoras.filter((op) =>
+        op.ciclos_disponiveis?.includes(simulacao.ciclo_horario)
+      );
+
       const custoAtual = calcularCustoAtual();
       setCustoAtual(custoAtual);
 
       const resultadosCalculados: ResultadoComparacao[] = [];
 
-      for (const operadora of operadoras) {
+      for (const operadora of operadorasComCiclo) {
         if (operadora.nome === simulacao.operadora_atual) continue;
 
         const desconto = descontosMap[operadora.id];
         const resultado = calcularCustoOperadora(operadora, desconto);
-        resultadosCalculados.push(resultado);
+        if (resultado) {
+          resultadosCalculados.push(resultado);
+        }
       }
 
       resultadosCalculados.sort((a, b) => b.poupanca - a.poupanca);
@@ -90,8 +96,11 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   const calcularCustoOperadora = (
     operadora: Operadora,
     desconto?: ConfiguracaoDesconto
-  ): ResultadoComparacao => {
-    const potenciasObj = operadora.valor_diario_potencias as Record<string, number>;
+  ): ResultadoComparacao | null => {
+    const tarifasCiclo = operadora.tarifas?.[simulacao.ciclo_horario];
+    if (!tarifasCiclo) return null;
+
+    const potenciasObj = tarifasCiclo.valor_diario_potencias as Record<string, number>;
     const valorPotenciaDiaria = potenciasObj[simulacao.potencia.toString()] || 0;
 
     let custoPotencia = valorPotenciaDiaria * simulacao.dias_fatura;
@@ -99,19 +108,19 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     let custoEnergia = 0;
     const custosEnergia: ResultadoComparacao['custos_energia'] = {};
 
-    if (simulacao.ciclo_horario === 'simples') {
-      custoEnergia = (simulacao.kwh_simples || 0) * operadora.valor_kwh_simples;
+    if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCiclo) {
+      custoEnergia = (simulacao.kwh_simples || 0) * tarifasCiclo.valor_kwh;
       custosEnergia.simples = custoEnergia;
-    } else if (simulacao.ciclo_horario === 'bi-horario') {
-      const custoVazio = (simulacao.kwh_vazio || 0) * operadora.valor_kwh_vazio;
-      const custoForaVazio = (simulacao.kwh_fora_vazio || 0) * operadora.valor_kwh_fora_vazio;
+    } else if (simulacao.ciclo_horario === 'bi-horario' && 'valor_kwh_vazio' in tarifasCiclo) {
+      const custoVazio = (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio;
+      const custoForaVazio = (simulacao.kwh_fora_vazio || 0) * tarifasCiclo.valor_kwh_fora_vazio;
       custoEnergia = custoVazio + custoForaVazio;
       custosEnergia.vazio = custoVazio;
       custosEnergia.fora_vazio = custoForaVazio;
-    } else if (simulacao.ciclo_horario === 'tri-horario') {
-      const custoVazio = (simulacao.kwh_vazio || 0) * operadora.valor_kwh_vazio;
-      const custoPonta = (simulacao.kwh_ponta || 0) * operadora.valor_kwh_ponta;
-      const custoCheias = (simulacao.kwh_cheias || 0) * operadora.valor_kwh_cheias;
+    } else if (simulacao.ciclo_horario === 'tri-horario' && 'valor_kwh_ponta' in tarifasCiclo) {
+      const custoVazio = (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio;
+      const custoPonta = (simulacao.kwh_ponta || 0) * tarifasCiclo.valor_kwh_ponta;
+      const custoCheias = (simulacao.kwh_cheias || 0) * tarifasCiclo.valor_kwh_cheias;
       custoEnergia = custoVazio + custoPonta + custoCheias;
       custosEnergia.vazio = custoVazio;
       custosEnergia.ponta = custoPonta;
@@ -147,17 +156,17 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       const custoPotenciaComDesconto = (valorPotenciaDiaria * simulacao.dias_fatura) * (1 - descontoPotenciaTotal / 100);
       let custoEnergiaBase = 0;
 
-      if (simulacao.ciclo_horario === 'simples') {
-        custoEnergiaBase = (simulacao.kwh_simples || 0) * operadora.valor_kwh_simples;
-      } else if (simulacao.ciclo_horario === 'bi-horario') {
+      if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCiclo) {
+        custoEnergiaBase = (simulacao.kwh_simples || 0) * tarifasCiclo.valor_kwh;
+      } else if (simulacao.ciclo_horario === 'bi-horario' && 'valor_kwh_vazio' in tarifasCiclo) {
         custoEnergiaBase =
-          (simulacao.kwh_vazio || 0) * operadora.valor_kwh_vazio +
-          (simulacao.kwh_fora_vazio || 0) * operadora.valor_kwh_fora_vazio;
-      } else if (simulacao.ciclo_horario === 'tri-horario') {
+          (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio +
+          (simulacao.kwh_fora_vazio || 0) * tarifasCiclo.valor_kwh_fora_vazio;
+      } else if (simulacao.ciclo_horario === 'tri-horario' && 'valor_kwh_ponta' in tarifasCiclo) {
         custoEnergiaBase =
-          (simulacao.kwh_vazio || 0) * operadora.valor_kwh_vazio +
-          (simulacao.kwh_ponta || 0) * operadora.valor_kwh_ponta +
-          (simulacao.kwh_cheias || 0) * operadora.valor_kwh_cheias;
+          (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio +
+          (simulacao.kwh_ponta || 0) * tarifasCiclo.valor_kwh_ponta +
+          (simulacao.kwh_cheias || 0) * tarifasCiclo.valor_kwh_cheias;
       }
 
       const custoEnergiaComDesconto = custoEnergiaBase * (1 - descontoEnergiaTotal / 100);
@@ -228,6 +237,11 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
 
   const melhorResultado = resultados[0];
 
+  const handleNoResultsWhatsApp = () => {
+    const message = encodeURIComponent('Olá, Não consegui simulação no site, podem ajudar-me?!');
+    openWhatsApp(MPGRUPO_WHATSAPP, message);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
@@ -237,6 +251,52 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
           </DialogTitle>
         </DialogHeader>
 
+        {resultados.length === 0 ? (
+          <div className="space-y-6 pt-4">
+            <div className="p-8 bg-muted/50 rounded-lg border border-border text-center">
+              <AlertCircle className="w-16 h-16 text-gold mx-auto mb-4" />
+              <h3 className="font-display text-2xl text-foreground mb-3">
+                Sem Operadoras Disponíveis
+              </h3>
+              <p className="font-body text-cream-muted mb-6">
+                De momento não temos operadoras configuradas com o ciclo horário {' '}
+                <strong>
+                  {simulacao.ciclo_horario === 'simples' && 'Simples'}
+                  {simulacao.ciclo_horario === 'bi-horario' && 'Bi-horário'}
+                  {simulacao.ciclo_horario === 'tri-horario' && 'Tri-horário'}
+                </strong>.
+                <br />
+                Mas não se preocupe, os nossos comerciais podem ajudá-lo!
+              </p>
+              <button
+                type="button"
+                onClick={handleNoResultsWhatsApp}
+                className="flex items-center gap-2 mx-auto px-8 py-4 bg-green-500 text-white rounded-lg font-body font-medium hover:bg-green-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                <MessageCircle className="w-6 h-6" />
+                Contactar via WhatsApp
+              </button>
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t border-border">
+              <button
+                type="button"
+                onClick={onReset}
+                className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg font-body text-cream-muted hover:text-foreground transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Nova Simulação
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="px-6 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-6 pt-4">
           {melhorResultado && melhorResultado.poupanca > 0 && (
             <>
@@ -460,6 +520,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </div>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

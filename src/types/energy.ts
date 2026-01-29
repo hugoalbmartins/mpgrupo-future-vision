@@ -1,16 +1,44 @@
+export type CicloHorario = 'simples' | 'bi-horario' | 'tri-horario';
+
+export interface TarifaSimples {
+  valor_kwh: number;
+  valor_diario_potencias: Record<string, number>;
+}
+
+export interface TarifaBiHorario {
+  valor_kwh_vazio: number;
+  valor_kwh_fora_vazio: number;
+  valor_diario_potencias: Record<string, number>;
+}
+
+export interface TarifaTriHorario {
+  valor_kwh_vazio: number;
+  valor_kwh_cheias: number;
+  valor_kwh_ponta: number;
+  valor_diario_potencias: Record<string, number>;
+}
+
+export interface TarifasOperadora {
+  simples?: TarifaSimples;
+  'bi-horario'?: TarifaBiHorario;
+  'tri-horario'?: TarifaTriHorario;
+}
+
 export interface Operadora {
   id: string;
   nome: string;
   logotipo_url: string | null;
-  valor_kwh_simples: number;
-  valor_kwh_vazio: number;
-  valor_kwh_fora_vazio: number;
-  valor_kwh_ponta: number;
-  valor_kwh_cheias: number;
-  valor_diario_potencias: Record<string, number>;
+  ciclos_disponiveis: CicloHorario[];
+  tarifas: TarifasOperadora;
   ativa: boolean;
   created_at: string;
   updated_at: string;
+  valor_kwh_simples?: number;
+  valor_kwh_vazio?: number;
+  valor_kwh_fora_vazio?: number;
+  valor_kwh_ponta?: number;
+  valor_kwh_cheias?: number;
+  valor_diario_potencias?: Record<string, number>;
 }
 
 export interface ConfiguracaoDesconto {
@@ -23,8 +51,6 @@ export interface ConfiguracaoDesconto {
   created_at: string;
   updated_at: string;
 }
-
-export type CicloHorario = 'simples' | 'bi-horario' | 'tri-horario';
 
 export interface SimulacaoInput {
   operadora_atual: string;

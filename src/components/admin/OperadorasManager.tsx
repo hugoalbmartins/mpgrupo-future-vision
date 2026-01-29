@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Operadora, POTENCIAS_DISPONIVEIS } from '@/types/energy';
+import { Operadora, POTENCIAS_DISPONIVEIS, CicloHorario, TarifasOperadora } from '@/types/energy';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const OperadorasManager = () => {
   const [operadoras, setOperadoras] = useState<Operadora[]>([]);
@@ -17,15 +19,12 @@ const OperadorasManager = () => {
   const [formData, setFormData] = useState({
     nome: '',
     logotipo_url: '',
-    valor_kwh_simples: 0,
-    valor_kwh_vazio: 0,
-    valor_kwh_fora_vazio: 0,
-    valor_kwh_ponta: 0,
-    valor_kwh_cheias: 0,
     ativa: true,
   });
 
-  const [potencias, setPotencias] = useState<Record<string, number>>({});
+  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<CicloHorario[]>([]);
+  const [tarifas, setTarifas] = useState<TarifasOperadora>({});
+  const [activeTab, setActiveTab] = useState<CicloHorario>('simples');
 
   useEffect(() => {
     loadOperadoras();
@@ -110,14 +109,11 @@ const OperadorasManager = () => {
       setFormData({
         nome: operadora.nome,
         logotipo_url: operadora.logotipo_url || '',
-        valor_kwh_simples: operadora.valor_kwh_simples,
-        valor_kwh_vazio: operadora.valor_kwh_vazio,
-        valor_kwh_fora_vazio: operadora.valor_kwh_fora_vazio,
-        valor_kwh_ponta: operadora.valor_kwh_ponta,
-        valor_kwh_cheias: operadora.valor_kwh_cheias,
         ativa: operadora.ativa,
       });
-      setPotencias(operadora.valor_diario_potencias as Record<string, number>);
+      setCiclosDisponiveis(operadora.ciclos_disponiveis || []);
+      setTarifas(operadora.tarifas || {});
+      setActiveTab(operadora.ciclos_disponiveis?.[0] || 'simples');
       if (operadora.logotipo_url) {
         setLogoPreview(operadora.logotipo_url);
       }
@@ -126,20 +122,53 @@ const OperadorasManager = () => {
       setFormData({
         nome: '',
         logotipo_url: '',
-        valor_kwh_simples: 0,
-        valor_kwh_vazio: 0,
-        valor_kwh_fora_vazio: 0,
-        valor_kwh_ponta: 0,
-        valor_kwh_cheias: 0,
         ativa: true,
       });
-      setPotencias({});
+      setCiclosDisponiveis([]);
+      setTarifas({});
+      setActiveTab('simples');
     }
     setShowDialog(true);
   };
 
+  const handleCicloToggle = (ciclo: CicloHorario) => {
+    if (ciclosDisponiveis.includes(ciclo)) {
+      setCiclosDisponiveis(ciclosDisponiveis.filter(c => c !== ciclo));
+      const newTarifas = { ...tarifas };
+      delete newTarifas[ciclo];
+      setTarifas(newTarifas);
+    } else {
+      setCiclosDisponiveis([...ciclosDisponiveis, ciclo]);
+      if (ciclo === 'simples') {
+        setTarifas({
+          ...tarifas,
+          simples: { valor_kwh: 0, valor_diario_potencias: {} }
+        });
+      } else if (ciclo === 'bi-horario') {
+        setTarifas({
+          ...tarifas,
+          'bi-horario': { valor_kwh_vazio: 0, valor_kwh_fora_vazio: 0, valor_diario_potencias: {} }
+        });
+      } else {
+        setTarifas({
+          ...tarifas,
+          'tri-horario': { valor_kwh_vazio: 0, valor_kwh_cheias: 0, valor_kwh_ponta: 0, valor_diario_potencias: {} }
+        });
+      }
+      if (ciclosDisponiveis.length === 0) {
+        setActiveTab(ciclo);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (ciclosDisponiveis.length === 0) {
+      toast.error('Selecione pelo menos um ciclo horário');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -163,7 +192,8 @@ const OperadorasManager = () => {
       const dataToSubmit = {
         ...formData,
         logotipo_url: logoUrl,
-        valor_diario_potencias: potencias,
+        ciclos_disponiveis: ciclosDisponiveis,
+        tarifas: tarifas,
       };
 
       if (editingId) {
@@ -249,7 +279,7 @@ const OperadorasManager = () => {
                 <div>
                   <h3 className="font-body font-medium text-foreground">{operadora.nome}</h3>
                   <p className="text-sm text-cream-muted">
-                    {operadora.ativa ? 'Ativa' : 'Inativa'}
+                    {operadora.ativa ? 'Ativa' : 'Inativa'} • Ciclos: {operadora.ciclos_disponiveis?.join(', ') || 'Nenhum'}
                   </p>
                 </div>
               </div>
@@ -273,7 +303,7 @@ const OperadorasManager = () => {
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">
               {editingId ? 'Editar Operadora' : 'Nova Operadora'}
@@ -318,103 +348,284 @@ const OperadorasManager = () => {
             </div>
 
             <div>
-              <h3 className="font-body font-medium text-foreground mb-3">Tarifas kWh (€/kWh)</h3>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div>
-                  <label className="font-body text-sm text-cream-muted mb-2 block">
+              <label className="font-body text-sm text-cream-muted mb-3 block">
+                Ciclos Horários Disponíveis *
+              </label>
+              <div className="flex gap-6">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="ciclo-simples"
+                    checked={ciclosDisponiveis.includes('simples')}
+                    onCheckedChange={() => handleCicloToggle('simples')}
+                  />
+                  <label htmlFor="ciclo-simples" className="font-body text-sm cursor-pointer">
                     Simples
                   </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={formData.valor_kwh_simples}
-                    onChange={(e) => setFormData({ ...formData, valor_kwh_simples: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-                  />
                 </div>
-                <div>
-                  <label className="font-body text-sm text-cream-muted mb-2 block">
-                    Vazio
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={formData.valor_kwh_vazio}
-                    onChange={(e) => setFormData({ ...formData, valor_kwh_vazio: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="ciclo-bi"
+                    checked={ciclosDisponiveis.includes('bi-horario')}
+                    onCheckedChange={() => handleCicloToggle('bi-horario')}
                   />
+                  <label htmlFor="ciclo-bi" className="font-body text-sm cursor-pointer">
+                    Bi-horário
+                  </label>
                 </div>
-                <div>
-                  <label className="font-body text-sm text-cream-muted mb-2 block">
-                    Fora de Vazio
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={formData.valor_kwh_fora_vazio}
-                    onChange={(e) => setFormData({ ...formData, valor_kwh_fora_vazio: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="ciclo-tri"
+                    checked={ciclosDisponiveis.includes('tri-horario')}
+                    onCheckedChange={() => handleCicloToggle('tri-horario')}
                   />
-                </div>
-                <div>
-                  <label className="font-body text-sm text-cream-muted mb-2 block">
-                    Ponta
+                  <label htmlFor="ciclo-tri" className="font-body text-sm cursor-pointer">
+                    Tri-horário
                   </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={formData.valor_kwh_ponta}
-                    onChange={(e) => setFormData({ ...formData, valor_kwh_ponta: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-                  />
-                </div>
-                <div>
-                  <label className="font-body text-sm text-cream-muted mb-2 block">
-                    Cheias
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={formData.valor_kwh_cheias}
-                    onChange={(e) => setFormData({ ...formData, valor_kwh_cheias: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-                  />
                 </div>
               </div>
             </div>
 
-            <div>
-              <h3 className="font-body font-medium text-foreground mb-3">
-                Valor Diário por Potência (€/dia)
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2 bg-muted/50 rounded-lg">
-                {POTENCIAS_DISPONIVEIS.map((potencia) => (
-                  <div key={potencia}>
-                    <label className="font-body text-xs text-cream-muted mb-1 block">
-                      {potencia} kVA
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={potencias[potencia.toString()] || ''}
-                      onChange={(e) => setPotencias({
-                        ...potencias,
-                        [potencia.toString()]: parseFloat(e.target.value) || 0
-                      })}
-                      className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded font-body text-foreground focus:outline-none focus:ring-1 focus:ring-gold/50"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+            {ciclosDisponiveis.length > 0 && (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CicloHorario)}>
+                <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${ciclosDisponiveis.length}, 1fr)` }}>
+                  {ciclosDisponiveis.includes('simples') && (
+                    <TabsTrigger value="simples">Simples</TabsTrigger>
+                  )}
+                  {ciclosDisponiveis.includes('bi-horario') && (
+                    <TabsTrigger value="bi-horario">Bi-horário</TabsTrigger>
+                  )}
+                  {ciclosDisponiveis.includes('tri-horario') && (
+                    <TabsTrigger value="tri-horario">Tri-horário</TabsTrigger>
+                  )}
+                </TabsList>
+
+                {ciclosDisponiveis.includes('simples') && (
+                  <TabsContent value="simples" className="space-y-4">
+                    <div>
+                      <label className="font-body text-sm text-cream-muted mb-2 block">
+                        Valor kWh (€/kWh)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={tarifas.simples?.valor_kwh || 0}
+                        onChange={(e) => setTarifas({
+                          ...tarifas,
+                          simples: {
+                            ...tarifas.simples!,
+                            valor_kwh: parseFloat(e.target.value) || 0
+                          }
+                        })}
+                        className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-body font-medium text-foreground mb-3">
+                        Valor Diário por Potência (€/dia)
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2 bg-muted/50 rounded-lg">
+                        {POTENCIAS_DISPONIVEIS.map((potencia) => (
+                          <div key={potencia}>
+                            <label className="font-body text-xs text-cream-muted mb-1 block">
+                              {potencia} kVA
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={tarifas.simples?.valor_diario_potencias?.[potencia.toString()] || ''}
+                              onChange={(e) => setTarifas({
+                                ...tarifas,
+                                simples: {
+                                  ...tarifas.simples!,
+                                  valor_diario_potencias: {
+                                    ...tarifas.simples!.valor_diario_potencias,
+                                    [potencia.toString()]: parseFloat(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                              className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded font-body text-foreground focus:outline-none focus:ring-1 focus:ring-gold/50"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                )}
+
+                {ciclosDisponiveis.includes('bi-horario') && (
+                  <TabsContent value="bi-horario" className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="font-body text-sm text-cream-muted mb-2 block">
+                          Valor kWh Vazio (€/kWh)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={tarifas['bi-horario']?.valor_kwh_vazio || 0}
+                          onChange={(e) => setTarifas({
+                            ...tarifas,
+                            'bi-horario': {
+                              ...tarifas['bi-horario']!,
+                              valor_kwh_vazio: parseFloat(e.target.value) || 0
+                            }
+                          })}
+                          className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-body text-sm text-cream-muted mb-2 block">
+                          Valor kWh Fora de Vazio (€/kWh)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={tarifas['bi-horario']?.valor_kwh_fora_vazio || 0}
+                          onChange={(e) => setTarifas({
+                            ...tarifas,
+                            'bi-horario': {
+                              ...tarifas['bi-horario']!,
+                              valor_kwh_fora_vazio: parseFloat(e.target.value) || 0
+                            }
+                          })}
+                          className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-body font-medium text-foreground mb-3">
+                        Valor Diário por Potência (€/dia)
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2 bg-muted/50 rounded-lg">
+                        {POTENCIAS_DISPONIVEIS.map((potencia) => (
+                          <div key={potencia}>
+                            <label className="font-body text-xs text-cream-muted mb-1 block">
+                              {potencia} kVA
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={tarifas['bi-horario']?.valor_diario_potencias?.[potencia.toString()] || ''}
+                              onChange={(e) => setTarifas({
+                                ...tarifas,
+                                'bi-horario': {
+                                  ...tarifas['bi-horario']!,
+                                  valor_diario_potencias: {
+                                    ...tarifas['bi-horario']!.valor_diario_potencias,
+                                    [potencia.toString()]: parseFloat(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                              className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded font-body text-foreground focus:outline-none focus:ring-1 focus:ring-gold/50"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                )}
+
+                {ciclosDisponiveis.includes('tri-horario') && (
+                  <TabsContent value="tri-horario" className="space-y-4">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="font-body text-sm text-cream-muted mb-2 block">
+                          Valor kWh Vazio (€/kWh)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={tarifas['tri-horario']?.valor_kwh_vazio || 0}
+                          onChange={(e) => setTarifas({
+                            ...tarifas,
+                            'tri-horario': {
+                              ...tarifas['tri-horario']!,
+                              valor_kwh_vazio: parseFloat(e.target.value) || 0
+                            }
+                          })}
+                          className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-body text-sm text-cream-muted mb-2 block">
+                          Valor kWh Cheias (€/kWh)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={tarifas['tri-horario']?.valor_kwh_cheias || 0}
+                          onChange={(e) => setTarifas({
+                            ...tarifas,
+                            'tri-horario': {
+                              ...tarifas['tri-horario']!,
+                              valor_kwh_cheias: parseFloat(e.target.value) || 0
+                            }
+                          })}
+                          className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-body text-sm text-cream-muted mb-2 block">
+                          Valor kWh Ponta (€/kWh)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={tarifas['tri-horario']?.valor_kwh_ponta || 0}
+                          onChange={(e) => setTarifas({
+                            ...tarifas,
+                            'tri-horario': {
+                              ...tarifas['tri-horario']!,
+                              valor_kwh_ponta: parseFloat(e.target.value) || 0
+                            }
+                          })}
+                          className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-body font-medium text-foreground mb-3">
+                        Valor Diário por Potência (€/dia)
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2 bg-muted/50 rounded-lg">
+                        {POTENCIAS_DISPONIVEIS.map((potencia) => (
+                          <div key={potencia}>
+                            <label className="font-body text-xs text-cream-muted mb-1 block">
+                              {potencia} kVA
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={tarifas['tri-horario']?.valor_diario_potencias?.[potencia.toString()] || ''}
+                              onChange={(e) => setTarifas({
+                                ...tarifas,
+                                'tri-horario': {
+                                  ...tarifas['tri-horario']!,
+                                  valor_diario_potencias: {
+                                    ...tarifas['tri-horario']!.valor_diario_potencias,
+                                    [potencia.toString()]: parseFloat(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                              className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded font-body text-foreground focus:outline-none focus:ring-1 focus:ring-gold/50"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                )}
+              </Tabs>
+            )}
 
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="ativa"
                 checked={formData.ativa}
-                onChange={(e) => setFormData({ ...formData, ativa: e.target.checked })}
-                className="w-4 h-4"
+                onCheckedChange={(checked) => setFormData({ ...formData, ativa: checked as boolean })}
               />
               <label htmlFor="ativa" className="font-body text-sm text-cream-muted cursor-pointer">
                 Operadora ativa
