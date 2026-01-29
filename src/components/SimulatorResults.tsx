@@ -284,9 +284,11 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     openWhatsApp(MPGRUPO_WHATSAPP, message);
   };
 
+  const temPoupanca = resultados.some((r) => r.poupanca > 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`max-w-[95vw] max-h-[90vh] overflow-y-auto ${temPoupanca ? 'ring-4 ring-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.3)]' : ''}`}>
         <DialogHeader>
           <DialogTitle className="font-display text-3xl text-center mb-2">
             Resultados da <span className="gold-text">Simulação</span>
@@ -379,6 +381,17 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </>
           )}
 
+          <div className="p-4 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-3 mb-4">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-body text-sm text-foreground">
+                <strong>Nota importante:</strong> Esta simulação não considera descontos de tarifa social.
+                Caso tenha direito a tarifa social, esse desconto é aplicado na mesma percentagem por qualquer operadora,
+                pelo que deve desconsiderar esse valor na comparação.
+              </p>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
@@ -393,8 +406,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   {resultados.map((r) => (
                     <th
                       key={r.operadora.id}
-                      className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                        r === melhorResultado ? 'bg-gold/20' : ''
+                      className={`p-3 text-center font-body font-medium text-foreground border ${
+                        r === melhorResultado && r.poupanca > 0
+                          ? 'bg-green-100 dark:bg-green-900/30 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                          : r === melhorResultado
+                          ? 'bg-gold/20 border-border'
+                          : 'border-border'
                       }`}
                     >
                       <div className="flex flex-col items-center gap-2">
@@ -428,8 +445,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={`p-3 text-center font-body text-foreground border border-border ${
-                        r === melhorResultado ? 'bg-gold/10' : ''
+                      className={`p-3 text-center font-body text-foreground border ${
+                        r === melhorResultado && r.poupanca > 0
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500/50'
+                          : r === melhorResultado
+                          ? 'bg-gold/10 border-border'
+                          : 'border-border'
                       }`}
                     >
                       {formatCurrency(r.valor_potencia_diaria, 6)}
@@ -446,8 +467,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                        r === melhorResultado ? 'bg-gold/10' : ''
+                      className={`p-3 text-center font-body font-medium text-foreground border ${
+                        r === melhorResultado && r.poupanca > 0
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500/50'
+                          : r === melhorResultado
+                          ? 'bg-gold/10 border-border'
+                          : 'border-border'
                       }`}
                     >
                       {formatCurrency(r.custo_total_potencia, 2)}
@@ -757,8 +782,14 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={`p-3 text-center font-body font-bold text-lg border border-border ${
-                        r === melhorResultado ? 'bg-gold/30 text-gold' : r.poupanca > 0 ? 'text-green-600' : 'text-red-600'
+                      className={`p-3 text-center font-body font-bold text-lg border ${
+                        r === melhorResultado && r.poupanca > 0
+                          ? 'bg-green-100 dark:bg-green-900/30 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)] text-green-700 dark:text-green-400'
+                          : r === melhorResultado
+                          ? 'bg-gold/30 text-gold border-border'
+                          : r.poupanca > 0
+                          ? 'text-green-600 border-border'
+                          : 'text-red-600 border-border'
                       }`}
                     >
                       {formatCurrency(r.poupanca, 2)}
