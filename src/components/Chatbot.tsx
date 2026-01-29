@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
@@ -9,80 +9,34 @@ interface Message {
   timestamp: Date;
 }
 
-interface FAQ {
-  question: string;
-  answer: string;
-  keywords: string[];
+interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
-const faqs: FAQ[] = [
-  {
-    question: 'Como funciona a mudança de operadora?',
-    answer: 'A mudança é simples e gratuita! Tratamos de todo o processo por si. Basta fornecer os seus dados e nós contactamos a nova operadora, que trata da rescisão com a atual. O processo demora cerca de 15 dias úteis e não há interrupção no fornecimento.',
-    keywords: ['mudança', 'mudar', 'trocar', 'operadora', 'processo', 'como'],
-  },
-  {
-    question: 'Quanto tempo demora a mudança?',
-    answer: 'O processo de mudança demora tipicamente 15 dias úteis. Durante este período, o fornecimento de energia nunca é interrompido.',
-    keywords: ['tempo', 'demora', 'prazo', 'quanto', 'dias'],
-  },
-  {
-    question: 'Há custos para mudar?',
-    answer: 'Não! A mudança de operadora é totalmente gratuita. Não há custos de adesão, ativação ou rescisão. Apenas começa a pagar a nova tarifa após a mudança estar concluída.',
-    keywords: ['custo', 'preço', 'pagar', 'grátis', 'gratuito', 'dinheiro'],
-  },
-  {
-    question: 'O fornecimento é interrompido?',
-    answer: 'Não. O fornecimento de eletricidade nunca é interrompido durante a mudança. A transição é feita de forma transparente pela rede de distribuição.',
-    keywords: ['interrupção', 'corte', 'fornecimento', 'luz', 'energia'],
-  },
-  {
-    question: 'Como funciona o simulador?',
-    answer: 'O nosso simulador compara as tarifas das principais operadoras do mercado com base nos seus dados de consumo. Basta inserir informações da sua fatura atual e receberá uma análise completa de poupança.',
-    keywords: ['simulador', 'simulação', 'calcular', 'comparar'],
-  },
-  {
-    question: 'Posso voltar à operadora anterior?',
-    answer: 'Sim! Pode mudar de operadora sempre que desejar, sem custos ou penalizações. No mercado livre, tem total liberdade de escolha.',
-    keywords: ['voltar', 'anterior', 'reverter', 'cancelar'],
-  },
-  {
-    question: 'O que é potência contratada?',
-    answer: 'A potência contratada (em kVA) é a quantidade máxima de energia que pode usar simultaneamente. Encontra este valor na sua fatura. Se for muito baixa, os disjuntores disparam. Se for muito alta, está a pagar mais do que precisa.',
-    keywords: ['potência', 'kva', 'contratada', 'disjuntor'],
-  },
-  {
-    question: 'O que são ciclos horários?',
-    answer: 'Os ciclos horários definem quando a energia é mais cara ou mais barata:\n\n• Simples: preço único 24h\n• Bi-horário: preço vazio (mais barato) e fora-vazio\n• Tri-horário: vazio, ponta (mais caro) e cheias\n\nA escolha certa pode gerar grande poupança!',
-    keywords: ['ciclo', 'horário', 'vazio', 'ponta', 'cheias', 'bi-horário', 'tri-horário'],
-  },
-  {
-    question: 'Como vos posso contactar?',
-    answer: 'Pode contactar-nos através de:\n\n📱 WhatsApp: +351 912 345 678\n📧 Email: contacto@mpgrupo.pt\n📞 Telefone: +351 912 345 678\n\nOu preencha o formulário de contacto no site!',
-    keywords: ['contacto', 'contato', 'telefone', 'email', 'whatsapp', 'falar'],
-  },
-];
 
 const defaultMessages: Message[] = [
   {
     id: '1',
-    text: 'Olá! Sou o assistente virtual da MPGrupo. Como posso ajudar?',
+    text: 'Olá! Sou o assistente virtual da MPGrupo com IA. Como posso ajudar com as suas questões sobre energia renovável?',
     sender: 'bot',
     timestamp: new Date(),
   },
 ];
 
 const quickReplies = [
-  'Como mudar de operadora?',
-  'Quanto custa?',
-  'Quanto tempo demora?',
-  'Ver simulador',
+  'Como funciona a energia solar?',
+  'Quanto posso poupar?',
+  'Que serviços oferecem?',
+  'Como vos contacto?',
 ];
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(defaultMessages);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -93,21 +47,38 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  const findAnswer = (question: string): string => {
-    const lowerQuestion = question.toLowerCase();
+  const getAIResponse = async (message: string): Promise<string> => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`;
 
-    for (const faq of faqs) {
-      if (faq.keywords.some(keyword => lowerQuestion.includes(keyword))) {
-        return faq.answer;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          conversationHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return errorData.fallbackMessage || 'Desculpe, estou com dificuldades técnicas. Por favor, contacte-nos através do formulário ou WhatsApp.';
       }
-    }
 
-    return 'Desculpe, não encontrei uma resposta para essa pergunta. Pode contactar-nos diretamente:\n\n📱 WhatsApp: +351 912 345 678\n📧 contacto@mpgrupo.pt\n\nOu preencha o formulário de contacto no site!';
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      return 'Desculpe, ocorreu um erro ao processar a sua mensagem. Por favor, tente novamente ou contacte-nos diretamente.';
+    }
   };
 
-  const handleSendMessage = (text?: string) => {
+  const handleSendMessage = async (text?: string) => {
     const messageText = text || inputValue.trim();
-    if (!messageText) return;
+    if (!messageText || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -118,30 +89,41 @@ const Chatbot = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
+    setIsLoading(true);
 
-    if (messageText.toLowerCase().includes('simulador')) {
-      setTimeout(() => {
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: 'Ótimo! Pode aceder ao simulador clicando no botão "Simular Poupança" no topo do site ou na secção de serviços. É rápido e gratuito!',
-          sender: 'bot',
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, botMessage]);
-      }, 500);
-      return;
-    }
+    setConversationHistory(prev => [
+      ...prev,
+      { role: 'user', content: messageText },
+    ]);
 
-    setTimeout(() => {
-      const answer = findAnswer(messageText);
+    try {
+      const aiResponse = await getAIResponse(messageText);
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: answer,
+        text: aiResponse,
         sender: 'bot',
         timestamp: new Date(),
       };
+
       setMessages(prev => [...prev, botMessage]);
-    }, 500);
+
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: aiResponse },
+      ]);
+    } catch (error) {
+      console.error('Error in handleSendMessage:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Desculpe, ocorreu um erro. Por favor, tente novamente.',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -226,6 +208,21 @@ const Chatbot = () => {
                   )}
                 </motion.div>
               ))}
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-2 justify-start"
+                >
+                  <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                  <div className="max-w-[70%] p-3 rounded-2xl font-body text-sm bg-muted text-foreground rounded-bl-none flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>A pensar...</span>
+                  </div>
+                </motion.div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
@@ -254,13 +251,15 @@ const Chatbot = () => {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Digite sua mensagem..."
-                  className="flex-1 px-4 py-2 bg-muted border border-border rounded-full font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-2 bg-muted border border-border rounded-full font-body text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   onClick={() => handleSendMessage()}
-                  className="w-10 h-10 bg-gold text-primary-foreground rounded-full flex items-center justify-center hover:bg-gold-light transition-all"
+                  disabled={isLoading}
+                  className="w-10 h-10 bg-gold text-primary-foreground rounded-full flex items-center justify-center hover:bg-gold-light transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Send className="w-5 h-5" />
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>
               </div>
             </div>
