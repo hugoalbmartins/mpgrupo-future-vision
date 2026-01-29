@@ -53,7 +53,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       const resultadosCalculados: ResultadoComparacao[] = [];
 
       for (const operadora of operadorasComCiclo) {
-        if (operadora.nome === simulacao.operadora_atual) continue;
+        if (operadora.nome.toLowerCase().trim() === simulacao.operadora_atual.toLowerCase().trim()) continue;
 
         const desconto = descontosMap[operadora.id];
         const resultado = calcularCustoOperadora(operadora, desconto);
@@ -219,10 +219,19 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     };
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number, decimals: number = 2) => {
     return new Intl.NumberFormat('pt-PT', {
       style: 'currency',
       currency: 'EUR',
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value);
+  };
+
+  const formatNumber = (value: number, decimals: number = 6) => {
+    return new Intl.NumberFormat('pt-PT', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(value);
   };
 
@@ -371,19 +380,20 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-muted">
-                  <th className="p-4 text-left font-body font-medium text-foreground border border-border">
-                    Operadora
+                  <th className="p-3 text-left font-body font-medium text-foreground border border-border">
+                    Descrição
                   </th>
-                  <th className="p-4 text-right font-body font-medium text-foreground border border-border">
-                    Operadora Atual
+                  <th className="p-3 text-center font-body font-medium text-foreground border border-border">
+                    Operadora Atual<br/>
+                    <span className="text-xs font-normal text-cream-muted">{simulacao.operadora_atual}</span>
                   </th>
                   {resultados.map((r) => (
                     <th
                       key={r.operadora.id}
-                      className={`p-4 text-center font-body font-medium text-foreground border border-border ${
+                      className={`p-3 text-center font-body font-medium text-foreground border border-border ${
                         r === melhorResultado ? 'bg-gold/20' : ''
                       }`}
                     >
@@ -392,103 +402,366 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                           <img
                             src={r.operadora.logotipo_url}
                             alt={r.operadora.nome}
-                            className="w-24 h-12 object-contain bg-white rounded p-1"
+                            className="w-20 h-10 object-contain bg-white rounded p-1"
                           />
                         )}
-                        <span className="text-sm">{r.operadora.nome}</span>
+                        <span className="text-xs">{r.operadora.nome}</span>
                       </div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
+                {/* Potência */}
+                <tr className="bg-muted/30">
+                  <td colSpan={2 + resultados.length} className="p-2 font-body font-semibold text-foreground border border-border">
+                    POTÊNCIA ({simulacao.potencia} kVA)
+                  </td>
+                </tr>
                 <tr>
-                  <td className="p-4 font-body text-cream-muted border border-border">
+                  <td className="p-3 font-body text-cream-muted border border-border">
                     Valor Potência Diária
                   </td>
-                  <td className="p-4 text-right font-body text-foreground border border-border">
-                    -
+                  <td className="p-3 text-center font-body text-foreground border border-border">
+                    {formatCurrency(simulacao.valor_potencia_diaria_atual, 6)}
                   </td>
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={`p-4 text-center font-body text-foreground border border-border ${
+                      className={`p-3 text-center font-body text-foreground border border-border ${
                         r === melhorResultado ? 'bg-gold/10' : ''
                       }`}
                     >
-                      {formatCurrency(r.valor_potencia_diaria)}
+                      {formatCurrency(r.valor_potencia_diaria, 6)}
                     </td>
                   ))}
                 </tr>
                 <tr>
-                  <td className="p-4 font-body text-cream-muted border border-border">
-                    Custo Total Potência
+                  <td className="p-3 font-body text-cream-muted border border-border">
+                    Total Potência ({simulacao.dias_fatura} dias)
                   </td>
-                  <td className="p-4 text-right font-body text-foreground border border-border">
-                    -
-                  </td>
-                  {resultados.map((r) => (
-                    <td
-                      key={r.operadora.id}
-                      className={`p-4 text-center font-body text-foreground border border-border ${
-                        r === melhorResultado ? 'bg-gold/10' : ''
-                      }`}
-                    >
-                      {formatCurrency(r.custo_total_potencia)}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="p-4 font-body text-cream-muted border border-border">
-                    Custo Total Energia
-                  </td>
-                  <td className="p-4 text-right font-body text-foreground border border-border">
-                    {formatCurrency(custoAtual)}
+                  <td className="p-3 text-center font-body font-medium text-foreground border border-border">
+                    {formatCurrency(simulacao.valor_potencia_diaria_atual * simulacao.dias_fatura, 2)}
                   </td>
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={`p-4 text-center font-body text-foreground border border-border ${
+                      className={`p-3 text-center font-body font-medium text-foreground border border-border ${
                         r === melhorResultado ? 'bg-gold/10' : ''
                       }`}
                     >
-                      {formatCurrency(r.custo_total_energia)}
+                      {formatCurrency(r.custo_total_potencia, 2)}
                     </td>
                   ))}
                 </tr>
+
+                {/* Energia - Ciclo Simples */}
+                {simulacao.ciclo_horario === 'simples' && (
+                  <>
+                    <tr className="bg-muted/30">
+                      <td colSpan={2 + resultados.length} className="p-2 font-body font-semibold text-foreground border border-border">
+                        ENERGIA - CICLO SIMPLES
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Valor kWh
+                      </td>
+                      <td className="p-3 text-center font-body text-foreground border border-border">
+                        {formatCurrency(simulacao.preco_simples || 0, 6)}
+                      </td>
+                      {resultados.map((r) => {
+                        const tarifasCiclo = r.operadora.tarifas?.['simples'];
+                        const valorKwh = tarifasCiclo && 'valor_kwh' in tarifasCiclo ? tarifasCiclo.valor_kwh : 0;
+                        return (
+                          <td
+                            key={r.operadora.id}
+                            className={`p-3 text-center font-body text-foreground border border-border ${
+                              r === melhorResultado ? 'bg-gold/10' : ''
+                            }`}
+                          >
+                            {formatCurrency(valorKwh, 6)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Total Energia ({formatNumber(simulacao.kwh_simples || 0, 2)} kWh)
+                      </td>
+                      <td className="p-3 text-center font-body font-medium text-foreground border border-border">
+                        {formatCurrency((simulacao.kwh_simples || 0) * (simulacao.preco_simples || 0), 2)}
+                      </td>
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
+                            r === melhorResultado ? 'bg-gold/10' : ''
+                          }`}
+                        >
+                          {formatCurrency(r.custos_energia.simples || 0, 2)}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                )}
+
+                {/* Energia - Bi-horário */}
+                {simulacao.ciclo_horario === 'bi-horario' && (
+                  <>
+                    <tr className="bg-muted/30">
+                      <td colSpan={2 + resultados.length} className="p-2 font-body font-semibold text-foreground border border-border">
+                        ENERGIA - CICLO BI-HORÁRIO
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Valor kWh Vazio
+                      </td>
+                      <td className="p-3 text-center font-body text-foreground border border-border">
+                        {formatCurrency(simulacao.preco_vazio || 0, 6)}
+                      </td>
+                      {resultados.map((r) => {
+                        const tarifasCiclo = r.operadora.tarifas?.['bi-horario'];
+                        const valorKwh = tarifasCiclo && 'valor_kwh_vazio' in tarifasCiclo ? tarifasCiclo.valor_kwh_vazio : 0;
+                        return (
+                          <td
+                            key={r.operadora.id}
+                            className={`p-3 text-center font-body text-foreground border border-border ${
+                              r === melhorResultado ? 'bg-gold/10' : ''
+                            }`}
+                          >
+                            {formatCurrency(valorKwh, 6)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Total Energia Vazio ({formatNumber(simulacao.kwh_vazio || 0, 2)} kWh)
+                      </td>
+                      <td className="p-3 text-center font-body font-medium text-foreground border border-border">
+                        {formatCurrency((simulacao.kwh_vazio || 0) * (simulacao.preco_vazio || 0), 2)}
+                      </td>
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
+                            r === melhorResultado ? 'bg-gold/10' : ''
+                          }`}
+                        >
+                          {formatCurrency(r.custos_energia.vazio || 0, 2)}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Valor kWh Fora Vazio
+                      </td>
+                      <td className="p-3 text-center font-body text-foreground border border-border">
+                        {formatCurrency(simulacao.preco_fora_vazio || 0, 6)}
+                      </td>
+                      {resultados.map((r) => {
+                        const tarifasCiclo = r.operadora.tarifas?.['bi-horario'];
+                        const valorKwh = tarifasCiclo && 'valor_kwh_fora_vazio' in tarifasCiclo ? tarifasCiclo.valor_kwh_fora_vazio : 0;
+                        return (
+                          <td
+                            key={r.operadora.id}
+                            className={`p-3 text-center font-body text-foreground border border-border ${
+                              r === melhorResultado ? 'bg-gold/10' : ''
+                            }`}
+                          >
+                            {formatCurrency(valorKwh, 6)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Total Energia Fora Vazio ({formatNumber(simulacao.kwh_fora_vazio || 0, 2)} kWh)
+                      </td>
+                      <td className="p-3 text-center font-body font-medium text-foreground border border-border">
+                        {formatCurrency((simulacao.kwh_fora_vazio || 0) * (simulacao.preco_fora_vazio || 0), 2)}
+                      </td>
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
+                            r === melhorResultado ? 'bg-gold/10' : ''
+                          }`}
+                        >
+                          {formatCurrency(r.custos_energia.fora_vazio || 0, 2)}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                )}
+
+                {/* Energia - Tri-horário */}
+                {simulacao.ciclo_horario === 'tri-horario' && (
+                  <>
+                    <tr className="bg-muted/30">
+                      <td colSpan={2 + resultados.length} className="p-2 font-body font-semibold text-foreground border border-border">
+                        ENERGIA - CICLO TRI-HORÁRIO
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Valor kWh Vazio
+                      </td>
+                      <td className="p-3 text-center font-body text-foreground border border-border">
+                        {formatCurrency(simulacao.preco_vazio || 0, 6)}
+                      </td>
+                      {resultados.map((r) => {
+                        const tarifasCiclo = r.operadora.tarifas?.['tri-horario'];
+                        const valorKwh = tarifasCiclo && 'valor_kwh_vazio' in tarifasCiclo ? tarifasCiclo.valor_kwh_vazio : 0;
+                        return (
+                          <td
+                            key={r.operadora.id}
+                            className={`p-3 text-center font-body text-foreground border border-border ${
+                              r === melhorResultado ? 'bg-gold/10' : ''
+                            }`}
+                          >
+                            {formatCurrency(valorKwh, 6)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Total Energia Vazio ({formatNumber(simulacao.kwh_vazio || 0, 2)} kWh)
+                      </td>
+                      <td className="p-3 text-center font-body font-medium text-foreground border border-border">
+                        {formatCurrency((simulacao.kwh_vazio || 0) * (simulacao.preco_vazio || 0), 2)}
+                      </td>
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
+                            r === melhorResultado ? 'bg-gold/10' : ''
+                          }`}
+                        >
+                          {formatCurrency(r.custos_energia.vazio || 0, 2)}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Valor kWh Ponta
+                      </td>
+                      <td className="p-3 text-center font-body text-foreground border border-border">
+                        {formatCurrency(simulacao.preco_ponta || 0, 6)}
+                      </td>
+                      {resultados.map((r) => {
+                        const tarifasCiclo = r.operadora.tarifas?.['tri-horario'];
+                        const valorKwh = tarifasCiclo && 'valor_kwh_ponta' in tarifasCiclo ? tarifasCiclo.valor_kwh_ponta : 0;
+                        return (
+                          <td
+                            key={r.operadora.id}
+                            className={`p-3 text-center font-body text-foreground border border-border ${
+                              r === melhorResultado ? 'bg-gold/10' : ''
+                            }`}
+                          >
+                            {formatCurrency(valorKwh, 6)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Total Energia Ponta ({formatNumber(simulacao.kwh_ponta || 0, 2)} kWh)
+                      </td>
+                      <td className="p-3 text-center font-body font-medium text-foreground border border-border">
+                        {formatCurrency((simulacao.kwh_ponta || 0) * (simulacao.preco_ponta || 0), 2)}
+                      </td>
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
+                            r === melhorResultado ? 'bg-gold/10' : ''
+                          }`}
+                        >
+                          {formatCurrency(r.custos_energia.ponta || 0, 2)}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Valor kWh Cheias
+                      </td>
+                      <td className="p-3 text-center font-body text-foreground border border-border">
+                        {formatCurrency(simulacao.preco_cheias || 0, 6)}
+                      </td>
+                      {resultados.map((r) => {
+                        const tarifasCiclo = r.operadora.tarifas?.['tri-horario'];
+                        const valorKwh = tarifasCiclo && 'valor_kwh_cheias' in tarifasCiclo ? tarifasCiclo.valor_kwh_cheias : 0;
+                        return (
+                          <td
+                            key={r.operadora.id}
+                            className={`p-3 text-center font-body text-foreground border border-border ${
+                              r === melhorResultado ? 'bg-gold/10' : ''
+                            }`}
+                          >
+                            {formatCurrency(valorKwh, 6)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-body text-cream-muted border border-border">
+                        Total Energia Cheias ({formatNumber(simulacao.kwh_cheias || 0, 2)} kWh)
+                      </td>
+                      <td className="p-3 text-center font-body font-medium text-foreground border border-border">
+                        {formatCurrency((simulacao.kwh_cheias || 0) * (simulacao.preco_cheias || 0), 2)}
+                      </td>
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
+                            r === melhorResultado ? 'bg-gold/10' : ''
+                          }`}
+                        >
+                          {formatCurrency(r.custos_energia.cheias || 0, 2)}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                )}
+
+                {/* Totais */}
                 <tr className="bg-muted/50">
-                  <td className="p-4 font-body font-medium text-foreground border border-border">
-                    Subtotal
+                  <td className="p-3 font-body font-bold text-foreground border border-border">
+                    TOTAL FATURA
                   </td>
-                  <td className="p-4 text-right font-body font-medium text-foreground border border-border">
-                    {formatCurrency(custoAtual)}
+                  <td className="p-3 text-center font-body font-bold text-lg text-foreground border border-border">
+                    {formatCurrency(custoAtual, 2)}
                   </td>
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={`p-4 text-center font-body font-medium text-foreground border border-border ${
+                      className={`p-3 text-center font-body font-bold text-lg text-foreground border border-border ${
                         r === melhorResultado ? 'bg-gold/20' : ''
                       }`}
                     >
-                      {formatCurrency(r.subtotal)}
+                      {formatCurrency(r.subtotal, 2)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-gold/5">
-                  <td className="p-4 font-body font-bold text-foreground border border-border">
-                    Poupança
+                  <td className="p-3 font-body font-bold text-foreground border border-border">
+                    POUPANÇA
                   </td>
-                  <td className="p-4 text-right font-body text-foreground border border-border">
+                  <td className="p-3 text-center font-body text-foreground border border-border">
                     -
                   </td>
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={`p-4 text-center font-body font-bold border border-border ${
+                      className={`p-3 text-center font-body font-bold text-lg border border-border ${
                         r === melhorResultado ? 'bg-gold/30 text-gold' : r.poupanca > 0 ? 'text-green-600' : 'text-red-600'
                       }`}
                     >
-                      {r.poupanca > 0 ? '+' : ''}{formatCurrency(r.poupanca)}
+                      {formatCurrency(r.poupanca, 2)}
                     </td>
                   ))}
                 </tr>
@@ -496,22 +769,32 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </table>
           </div>
 
-          {resultados.some((r) => r.poupanca_potencial_dd_fe && r.poupanca_potencial_dd_fe > 0) && (
+          {resultados.some((r) => {
+            if (!r.poupanca_potencial_dd_fe || r.poupanca_potencial_dd_fe <= 0) return false;
+            const poupancaTotalComDDFE = custoAtual - (r.subtotal - r.poupanca_potencial_dd_fe);
+            return poupancaTotalComDDFE > 0;
+          }) && (
             <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="font-body font-medium text-foreground">
-                  Poupança Adicional com DD + FE
+                  Poupança Adicional com Débito Direto e Fatura Eletrónica
                 </p>
                 {resultados
-                  .filter((r) => r.poupanca_potencial_dd_fe && r.poupanca_potencial_dd_fe > 0)
-                  .map((r) => (
-                    <p key={r.operadora.id} className="font-body text-sm text-cream-muted">
-                      <strong>{r.operadora.nome}:</strong> Poderia poupar mais{' '}
-                      <strong className="text-blue-500">{formatCurrency(r.poupanca_potencial_dd_fe!)}</strong>{' '}
-                      se aderisse a Débito Direto e Fatura Eletrónica
-                    </p>
-                  ))}
+                  .filter((r) => {
+                    if (!r.poupanca_potencial_dd_fe || r.poupanca_potencial_dd_fe <= 0) return false;
+                    const poupancaTotalComDDFE = custoAtual - (r.subtotal - r.poupanca_potencial_dd_fe);
+                    return poupancaTotalComDDFE > 0;
+                  })
+                  .map((r) => {
+                    const poupancaTotalComDDFE = custoAtual - (r.subtotal - r.poupanca_potencial_dd_fe!);
+                    return (
+                      <p key={r.operadora.id} className="font-body text-sm text-cream-muted">
+                        <strong>{r.operadora.nome}:</strong> Caso aderisse com Débito Direto e Fatura Eletrónica, a poupança total em relação à fatura atual seria de{' '}
+                        <strong className="text-blue-500">{formatCurrency(poupancaTotalComDDFE, 2)}</strong>
+                      </p>
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -583,7 +866,14 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </div>
           )}
 
-          {resultados.some((r) => r.desconto_temporario && !r.desconto_temporario.disponivel) && (
+          {resultados.some((r) => {
+            if (!r.desconto_temporario || r.desconto_temporario.disponivel) return false;
+            const custoMensalAtual = (custoAtual / simulacao.dias_fatura) * 30;
+            const custoMensalSimulado = (r.subtotal / simulacao.dias_fatura) * 30;
+            const custoComDesconto = custoMensalSimulado - r.desconto_temporario.valor_mensal;
+            const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
+            return poupancaMensalTotal > 0;
+          }) && (
             <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
@@ -591,19 +881,31 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   Descontos Promocionais Adicionais Disponíveis
                 </p>
                 {resultados
-                  .filter((r) => r.desconto_temporario && !r.desconto_temporario.disponivel)
+                  .filter((r) => {
+                    if (!r.desconto_temporario || r.desconto_temporario.disponivel) return false;
+                    const custoMensalAtual = (custoAtual / simulacao.dias_fatura) * 30;
+                    const custoMensalSimulado = (r.subtotal / simulacao.dias_fatura) * 30;
+                    const custoComDesconto = custoMensalSimulado - r.desconto_temporario.valor_mensal;
+                    const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
+                    return poupancaMensalTotal > 0;
+                  })
                   .map((r) => {
                     const dt = r.desconto_temporario!;
                     const requisitos: string[] = [];
                     if (dt.requer_dd && !simulacao.debito_direto) requisitos.push('Débito Direto');
                     if (dt.requer_fe && !simulacao.fatura_eletronica) requisitos.push('Fatura Eletrónica');
 
+                    const custoMensalAtual = (custoAtual / simulacao.dias_fatura) * 30;
+                    const custoMensalSimulado = (r.subtotal / simulacao.dias_fatura) * 30;
+                    const custoComDesconto = custoMensalSimulado - dt.valor_mensal;
+                    const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
+                    const poupancaTotalPeriodo = poupancaMensalTotal * dt.duracao_meses;
+
                     return (
                       <p key={r.operadora.id} className="font-body text-sm text-cream-muted">
-                        <strong>{r.operadora.nome}:</strong> Poupança adicional de{' '}
-                        <strong className="text-blue-500">{formatCurrency(dt.poupanca_periodo_desconto)}</strong>{' '}
-                        durante {dt.duracao_meses} {dt.duracao_meses === 1 ? 'mês' : 'meses'}{' '}
-                        se aderir a {requisitos.join(' e ')}
+                        <strong>{r.operadora.nome}:</strong> Caso aderisse com {requisitos.join(' e ')}, a poupança total em relação à fatura atual seria de{' '}
+                        <strong className="text-blue-500">{formatCurrency(poupancaTotalPeriodo, 2)}</strong>{' '}
+                        durante os primeiros {dt.duracao_meses} {dt.duracao_meses === 1 ? 'mês' : 'meses'}
                         {dt.descricao && ` (${dt.descricao})`}
                       </p>
                     );
