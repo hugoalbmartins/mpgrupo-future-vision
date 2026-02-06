@@ -20,7 +20,7 @@ const services = [
     icon: Sun,
     title: "Energia Solar",
     description: "Soluções fotovoltaicas personalizadas para residências e empresas. Reduza a fatura e aumente o valor do seu imóvel.",
-    stat: "25 anos",
+    stat: "até 25 anos",
     statLabel: "de garantia",
   },
 ];
