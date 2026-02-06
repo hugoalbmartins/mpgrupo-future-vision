@@ -6,6 +6,11 @@ interface PDFData {
   custoAtual: number;
   resultados: ResultadoComparacao[];
   dataGeracao: Date;
+  userInfo?: {
+    nome: string;
+    telefone?: string;
+    email?: string;
+  };
 }
 
 const MPGRUPO_LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -26,17 +31,17 @@ export const generateSimulationPDF = (data: PDFData): void => {
 
   doc.setTextColor(...textColor);
 
-  doc.setFillColor(...primaryColor);
+  doc.setFillColor(...goldColor);
   doc.rect(0, 0, pageWidth, 45, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
+  doc.setFontSize(28);
   doc.setFont('helvetica', 'bold');
-  doc.text('MPGrupo', margin, 25);
+  doc.text('MPGrupo', pageWidth / 2, 22, { align: 'center' });
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
-  doc.text('Relatório de Simulação Energética', margin, 35);
+  doc.text('Relatório de Simulação Energética', pageWidth / 2, 35, { align: 'center' });
 
   yPosition = 55;
 
@@ -66,6 +71,12 @@ export const generateSimulationPDF = (data: PDFData): void => {
     return y + 6;
   };
 
+  if (data.userInfo) {
+    yPosition = addInfoLine('Consultor', data.userInfo.nome, yPosition);
+    if (data.userInfo.telefone) yPosition = addInfoLine('Telefone', data.userInfo.telefone, yPosition);
+    if (data.userInfo.email) yPosition = addInfoLine('Email', data.userInfo.email, yPosition);
+    yPosition += 3;
+  }
   yPosition = addInfoLine('Data do Relatório', data.dataGeracao.toLocaleDateString('pt-PT'), yPosition);
   yPosition = addInfoLine('Operadora Atual', data.simulacao.operadora_atual, yPosition);
   yPosition = addInfoLine('Potência Contratada', `${data.simulacao.potencia} kVA`, yPosition);

@@ -113,6 +113,32 @@ export const POTENCIAS_DISPONIVEIS = [
   1.15, 2.3, 3.45, 4.6, 5.75, 6.9, 10.35, 13.8, 17.25, 20.7, 27.6, 34.5, 41.4
 ];
 
+export interface SimulatorUserContext {
+  user_id: string;
+  nome: string;
+  email: string;
+  telefone?: string;
+  empresa?: string;
+}
+
+export interface SimulatorEmbedConfig {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  userContext?: SimulatorUserContext;
+  onSimulationComplete?: (data: {
+    simulacao: SimulacaoInput;
+    resultados: ResultadoComparacao[];
+    custoAtual: number;
+  }) => void;
+  showExportPDF?: boolean;
+  showWhatsApp?: boolean;
+  pdfUserInfo?: {
+    nome: string;
+    telefone?: string;
+    email?: string;
+  };
+}
+
 export const OPERADORAS_MERCADO_LIVRE = [
   'EDP Comercial',
   'Endesa',

@@ -104,6 +104,12 @@ const PartnershipsSection = () => {
               </p>
               <a
                 href="#contact-parceria"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.history.replaceState(null, '', '#contact-parceria');
+                  window.dispatchEvent(new HashChangeEvent('hashchange'));
+                  document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+                }}
                 className="inline-block px-8 py-3 bg-gold text-primary-foreground font-body font-medium rounded-lg hover:bg-gold-light transition-all duration-300"
               >
                 Iniciar Parceria

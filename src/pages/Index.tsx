@@ -18,7 +18,7 @@ const Index = () => {
   const [simulatorOpen, setSimulatorOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Navbar />
       <Hero />
       <AboutSection />

@@ -31,6 +31,46 @@ export const generateWhatsAppMessage = (data: WhatsAppMessageData): string => {
   return encodeURIComponent(message);
 };
 
+interface WhatsAppAdesaoData {
+  simulacao: SimulacaoInput;
+  selectedResultado: ResultadoComparacao;
+  custoAtual: number;
+}
+
+export const generateWhatsAppAdesaoMessage = (data: WhatsAppAdesaoData): string => {
+  const { simulacao, selectedResultado, custoAtual } = data;
+  const poupancaAnual = (selectedResultado.poupanca / simulacao.dias_fatura) * 365;
+
+  let message = `Olá! Fiz uma simulação no vosso site e pretendo avançar com adesão!\n\n`;
+  message += `*Operadora selecionada: ${selectedResultado.operadora.nome}*\n\n`;
+  message += `*Resumo da Simulação:*\n`;
+  message += `- Operadora Atual: ${simulacao.operadora_atual}\n`;
+  message += `- Potência: ${simulacao.potencia} kVA\n`;
+  message += `- Ciclo: ${simulacao.ciclo_horario}\n`;
+  message += `- Dias Fatura: ${simulacao.dias_fatura}\n`;
+  message += `- Custo Atual: €${custoAtual.toFixed(2)}\n`;
+  message += `- Custo com ${selectedResultado.operadora.nome}: €${selectedResultado.subtotal.toFixed(2)}\n`;
+  message += `- Poupança: €${selectedResultado.poupanca.toFixed(2)} (${simulacao.dias_fatura} dias)\n`;
+  message += `- Projeção Anual: €${poupancaAnual.toFixed(2)}\n`;
+
+  if (simulacao.debito_direto || simulacao.fatura_eletronica) {
+    message += `\n*Opções selecionadas:*\n`;
+    if (simulacao.debito_direto) message += `- Débito Direto\n`;
+    if (simulacao.fatura_eletronica) message += `- Fatura Eletrónica\n`;
+  }
+
+  if (selectedResultado.desconto_temporario?.disponivel) {
+    const dt = selectedResultado.desconto_temporario;
+    message += `\n*Desconto Promocional:*\n`;
+    message += `- ${dt.descricao || `€${dt.valor_mensal.toFixed(2)}/mês durante ${dt.duracao_meses} meses`}\n`;
+    message += `- Poupança no período: €${dt.poupanca_periodo_desconto.toFixed(2)}\n`;
+  }
+
+  message += `\nAguardo o vosso contacto para avançar!`;
+
+  return encodeURIComponent(message);
+};
+
 export const openWhatsApp = (phoneNumber: string, message: string): void => {
   const cleanPhone = phoneNumber.replace(/\D/g, '');
   const url = `https://wa.me/${cleanPhone}?text=${message}`;

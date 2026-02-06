@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulacaoInput, Operadora, ConfiguracaoDesconto, ResultadoComparacao } from '@/types/energy';
 import { supabase } from '@/lib/supabase';
-import { Loader2, TrendingDown, AlertCircle, ArrowLeft, Download, MessageCircle } from 'lucide-react';
+import { Loader2, TrendingDown, AlertCircle, ArrowLeft, Download, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateSimulationPDF } from '@/lib/pdfGenerator';
-import { generateWhatsAppMessage, openWhatsApp, MPGRUPO_WHATSAPP } from '@/lib/whatsappUtils';
+import { generateWhatsAppMessage, generateWhatsAppAdesaoMessage, openWhatsApp, MPGRUPO_WHATSAPP } from '@/lib/whatsappUtils';
 
 interface SimulatorResultsProps {
   open: boolean;
@@ -18,6 +18,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   const [loading, setLoading] = useState(true);
   const [resultados, setResultados] = useState<ResultadoComparacao[]>([]);
   const [custoAtual, setCustoAtual] = useState(0);
+  const [selectedOperadoraId, setSelectedOperadoraId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -284,7 +285,13 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   };
 
   const handleAdesaoWhatsApp = () => {
-    const message = encodeURIComponent('Gostei da simulação que fiz e pretendo avançar com adesão!');
+    const selectedResultado = resultados.find((r) => r.operadora.id === selectedOperadoraId);
+    if (!selectedResultado) return;
+    const message = generateWhatsAppAdesaoMessage({
+      simulacao,
+      selectedResultado,
+      custoAtual,
+    });
     openWhatsApp(MPGRUPO_WHATSAPP, message);
   };
 
@@ -422,8 +429,8 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+          <div className="overflow-x-auto -mx-2 px-2">
+            <table className="w-full border-collapse text-sm min-w-[500px]">
               <thead>
                 <tr className="bg-muted">
                   <th className="p-3 text-left font-body font-medium text-foreground border border-border">
@@ -833,6 +840,44 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                     );
                   })}
                 </tr>
+
+                {resultados.some((r) => r.poupanca > 0) && (
+                  <tr className="bg-green-500/5">
+                    <td className="p-3 font-body font-medium text-foreground border border-border">
+                      SELECIONAR
+                    </td>
+                    <td className="p-3 text-center font-body text-cream-muted border border-border text-xs">
+                      Operadora atual
+                    </td>
+                    {resultados.map((r) => {
+                      const hasSavings = r.poupanca > 0;
+                      const isSelected = selectedOperadoraId === r.operadora.id;
+                      return (
+                        <td
+                          key={r.operadora.id}
+                          className="p-3 text-center border border-border"
+                        >
+                          {hasSavings ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOperadoraId(isSelected ? null : r.operadora.id)}
+                              className={`mx-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-body text-sm font-medium transition-all ${
+                                isSelected
+                                  ? 'bg-green-500 text-white shadow-lg'
+                                  : 'bg-muted border border-border text-cream-muted hover:border-green-500 hover:text-green-600'
+                              }`}
+                            >
+                              {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                              {isSelected ? 'Selecionada' : 'Selecionar'}
+                            </button>
+                          ) : (
+                            <span className="font-body text-xs text-cream-muted">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -992,7 +1037,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
               Nova Simulação
             </button>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 items-center">
               <button
                 type="button"
                 onClick={handleExportPDF}
@@ -1002,14 +1047,22 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                 <span className="hidden sm:inline">Exportar PDF</span>
                 <span className="sm:hidden">PDF</span>
               </button>
-              <button
-                type="button"
-                onClick={handleAdesaoWhatsApp}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg font-body font-medium hover:bg-green-600 transition-all shadow-lg hover:shadow-xl"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Quero aderir!
-              </button>
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleAdesaoWhatsApp}
+                  disabled={!selectedOperadoraId}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg font-body font-medium hover:bg-green-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Quero aderir!
+                </button>
+                {!selectedOperadoraId && temPoupanca && (
+                  <span className="font-body text-xs text-cream-muted">
+                    Selecione uma operadora na tabela
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}

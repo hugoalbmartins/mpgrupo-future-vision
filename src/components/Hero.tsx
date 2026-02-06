@@ -91,7 +91,13 @@ const Hero = () => {
             className="flex flex-col sm:flex-row gap-4"
           >
             <a
-              href="#contact"
+              href="#contact-parceria"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.replaceState(null, '', '#contact-parceria');
+                window.dispatchEvent(new HashChangeEvent('hashchange'));
+                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gold text-primary-foreground font-body font-medium rounded-lg transition-all duration-300 hover:bg-gold-light gold-glow"
             >
               Iniciar Parceria
