@@ -380,42 +380,19 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
         ) : (
         <div className="space-y-6 pt-4">
           {melhorResultado && melhorResultado.poupanca > 0 && (
-            <>
-              <div className="p-6 bg-gold/10 border-2 border-gold rounded-lg">
-                <div className="flex items-center gap-3 mb-3">
-                  <TrendingDown className="w-8 h-8 text-gold" />
-                  <div>
-                    <h3 className="font-display text-2xl text-foreground">
-                      Maior Poupança: {formatCurrency(melhorResultado.poupanca)}
-                    </h3>
-                    <p className="font-body text-sm text-cream-muted">
-                      Com {melhorResultado.operadora.nome}
-                    </p>
-                  </div>
+            <div className="p-6 bg-gold/10 border-2 border-gold rounded-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <TrendingDown className="w-8 h-8 text-gold" />
+                <div>
+                  <h3 className="font-display text-2xl text-foreground">
+                    Maior Poupança: {formatCurrency(melhorResultado.poupanca)}
+                  </h3>
+                  <p className="font-body text-sm text-cream-muted">
+                    Com {melhorResultado.operadora.nome}
+                  </p>
                 </div>
               </div>
-
-              <div className="p-6 bg-green-500/10 border-2 border-green-500 rounded-lg">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                  <div>
-                    <h4 className="font-display text-xl text-foreground mb-2">
-                      Quer começar a poupar?
-                    </h4>
-                    <p className="font-body text-sm text-cream-muted">
-                      Fale connosco no WhatsApp e ajudamos com toda a mudança!
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleWhatsAppContact}
-                    className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-lg font-body font-medium hover:bg-green-600 transition-all whitespace-nowrap"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    Contactar via WhatsApp
-                  </button>
-                </div>
-              </div>
-            </>
+            </div>
           )}
 
           <div className="p-4 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-3 mb-4">
@@ -912,12 +889,17 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             </div>
           )}
 
-          {resultados.some((r) => r.desconto_temporario && r.desconto_temporario.disponivel) && (
+          {resultados.some((r) => r.desconto_temporario) && (
             <div className="space-y-4">
               {resultados
-                .filter((r) => r.desconto_temporario && r.desconto_temporario.disponivel)
+                .filter((r) => r.desconto_temporario)
                 .map((r) => {
                   const dt = r.desconto_temporario!;
+                  const requisitos: string[] = [];
+                  if (!dt.disponivel) {
+                    if (dt.requer_dd && !simulacao.debito_direto) requisitos.push('Débito Direto');
+                    if (dt.requer_fe && !simulacao.fatura_eletronica) requisitos.push('Fatura Eletrónica');
+                  }
                   return (
                     <div key={r.operadora.id} className="p-6 bg-amber-500/10 border-2 border-amber-500/50 rounded-lg">
                       <div className="flex items-start gap-3 mb-4">
@@ -929,6 +911,11 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                           {dt.descricao && (
                             <p className="font-body text-sm text-amber-600 dark:text-amber-400 mb-2">
                               {dt.descricao}
+                            </p>
+                          )}
+                          {!dt.disponivel && requisitos.length > 0 && (
+                            <p className="font-body text-sm text-blue-500 font-medium">
+                              Requer adesão a {requisitos.join(' e ')}
                             </p>
                           )}
                         </div>
@@ -976,54 +963,6 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                     </div>
                   );
                 })}
-            </div>
-          )}
-
-          {resultados.some((r) => {
-            if (!r.desconto_temporario || r.desconto_temporario.disponivel) return false;
-            const custoMensalAtual = (custoAtual / simulacao.dias_fatura) * 30;
-            const custoMensalSimulado = (r.subtotal / simulacao.dias_fatura) * 30;
-            const custoComDesconto = custoMensalSimulado - r.desconto_temporario.valor_mensal;
-            const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
-            return poupancaMensalTotal > 0;
-          }) && (
-            <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <div className="space-y-2">
-                <p className="font-body font-medium text-foreground">
-                  Descontos Promocionais Adicionais Disponíveis
-                </p>
-                {resultados
-                  .filter((r) => {
-                    if (!r.desconto_temporario || r.desconto_temporario.disponivel) return false;
-                    const custoMensalAtual = (custoAtual / simulacao.dias_fatura) * 30;
-                    const custoMensalSimulado = (r.subtotal / simulacao.dias_fatura) * 30;
-                    const custoComDesconto = custoMensalSimulado - r.desconto_temporario.valor_mensal;
-                    const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
-                    return poupancaMensalTotal > 0;
-                  })
-                  .map((r) => {
-                    const dt = r.desconto_temporario!;
-                    const requisitos: string[] = [];
-                    if (dt.requer_dd && !simulacao.debito_direto) requisitos.push('Débito Direto');
-                    if (dt.requer_fe && !simulacao.fatura_eletronica) requisitos.push('Fatura Eletrónica');
-
-                    const custoMensalAtual = (custoAtual / simulacao.dias_fatura) * 30;
-                    const custoMensalSimulado = (r.subtotal / simulacao.dias_fatura) * 30;
-                    const custoComDesconto = custoMensalSimulado - dt.valor_mensal;
-                    const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
-                    const poupancaTotalPeriodo = poupancaMensalTotal * dt.duracao_meses;
-
-                    return (
-                      <p key={r.operadora.id} className="font-body text-sm text-cream-muted">
-                        <strong>{r.operadora.nome}:</strong> Caso aderisse com {requisitos.join(' e ')}, a poupança total em relação à fatura atual seria de{' '}
-                        <strong className="text-blue-500">{formatCurrency(poupancaTotalPeriodo, 2)}</strong>{' '}
-                        durante os primeiros {dt.duracao_meses} {dt.duracao_meses === 1 ? 'mês' : 'meses'}
-                        {dt.descricao && ` (${dt.descricao})`}
-                      </p>
-                    );
-                  })}
-              </div>
             </div>
           )}
 

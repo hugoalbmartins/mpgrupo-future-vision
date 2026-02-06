@@ -137,7 +137,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.valor_potencia_diaria_atual}
+                value={formData.valor_potencia_diaria_atual || ''}
                 onChange={(e) => updateField('valor_potencia_diaria_atual', parseFloat(e.target.value) || 0)}
                 required
                 placeholder="Ex: 0.3569"
