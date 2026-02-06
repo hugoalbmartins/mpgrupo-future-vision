@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulacaoInput, CicloHorario, POTENCIAS_DISPONIVEIS, OPERADORAS_MERCADO_LIVRE } from '@/types/energy';
 import { Zap, Building2, Calendar, ClockIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import SimulatorResults from './SimulatorResults';
 
 interface EnergySimulatorProps {
@@ -12,6 +13,7 @@ interface EnergySimulatorProps {
 const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
   const [step, setStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState<SimulacaoInput>({
     operadora_atual: '',
@@ -27,7 +29,17 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
 
   const updateField = <K extends keyof SimulacaoInput>(field: K, value: SimulacaoInput[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (fieldErrors.has(field)) {
+      setFieldErrors((prev) => {
+        const next = new Set(prev);
+        next.delete(field);
+        return next;
+      });
+    }
   };
+
+  const inputClass = (field: string, base: string) =>
+    `${base} ${fieldErrors.has(field) ? 'border-red-500 ring-1 ring-red-500' : ''}`;
 
   const handleCicloChange = (ciclo: CicloHorario) => {
     setFormData((prev) => ({
@@ -46,13 +58,48 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
     }));
   };
 
+  const validateForm = (): boolean => {
+    const errors = new Set<string>();
+
+    if (!formData.valor_potencia_diaria_atual || formData.valor_potencia_diaria_atual === 0) {
+      errors.add('valor_potencia_diaria_atual');
+    }
+
+    if (formData.ciclo_horario === 'simples') {
+      if (!formData.kwh_simples || formData.kwh_simples === 0) errors.add('kwh_simples');
+      if (!formData.preco_simples || formData.preco_simples === 0) errors.add('preco_simples');
+    } else if (formData.ciclo_horario === 'bi-horario') {
+      if (!formData.kwh_vazio || formData.kwh_vazio === 0) errors.add('kwh_vazio');
+      if (!formData.preco_vazio || formData.preco_vazio === 0) errors.add('preco_vazio');
+      if (!formData.kwh_fora_vazio || formData.kwh_fora_vazio === 0) errors.add('kwh_fora_vazio');
+      if (!formData.preco_fora_vazio || formData.preco_fora_vazio === 0) errors.add('preco_fora_vazio');
+    } else if (formData.ciclo_horario === 'tri-horario') {
+      if (!formData.kwh_vazio || formData.kwh_vazio === 0) errors.add('kwh_vazio');
+      if (!formData.preco_vazio || formData.preco_vazio === 0) errors.add('preco_vazio');
+      if (!formData.kwh_ponta || formData.kwh_ponta === 0) errors.add('kwh_ponta');
+      if (!formData.preco_ponta || formData.preco_ponta === 0) errors.add('preco_ponta');
+      if (!formData.kwh_cheias || formData.kwh_cheias === 0) errors.add('kwh_cheias');
+      if (!formData.preco_cheias || formData.preco_cheias === 0) errors.add('preco_cheias');
+    }
+
+    setFieldErrors(errors);
+
+    if (errors.size > 0) {
+      toast.error('Preencha todos os campos obrigatórios com valores superiores a 0.');
+      return false;
+    }
+    return true;
+  };
+
   const handleSimulate = () => {
+    if (!validateForm()) return;
     setShowResults(true);
   };
 
   const handleReset = () => {
     setShowResults(false);
     setStep(1);
+    setFieldErrors(new Set());
     setFormData({
       operadora_atual: '',
       potencia: 6.9,
@@ -141,7 +188,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                 onChange={(e) => updateField('valor_potencia_diaria_atual', parseFloat(e.target.value) || 0)}
                 required
                 placeholder="Ex: 0.3569"
-                className="w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                className={inputClass('valor_potencia_diaria_atual', 'w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
               />
               <p className="font-body text-xs text-cream-muted mt-1">
                 Encontra este valor na sua fatura atual
@@ -203,7 +250,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                     min="0"
                     value={formData.kwh_simples || ''}
                     onChange={(e) => updateField('kwh_simples', parseFloat(e.target.value) || 0)}
-                    className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                    className={inputClass('kwh_simples', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                   />
                 </div>
                 <div>
@@ -216,7 +263,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                     min="0"
                     value={formData.preco_simples || ''}
                     onChange={(e) => updateField('preco_simples', parseFloat(e.target.value) || 0)}
-                    className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                    className={inputClass('preco_simples', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                   />
                 </div>
               </div>
@@ -238,7 +285,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.kwh_vazio || ''}
                       onChange={(e) => updateField('kwh_vazio', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('kwh_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                   <div>
@@ -251,7 +298,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.preco_vazio || ''}
                       onChange={(e) => updateField('preco_vazio', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('preco_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                 </div>
@@ -266,7 +313,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.kwh_fora_vazio || ''}
                       onChange={(e) => updateField('kwh_fora_vazio', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('kwh_fora_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                   <div>
@@ -279,7 +326,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.preco_fora_vazio || ''}
                       onChange={(e) => updateField('preco_fora_vazio', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('preco_fora_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                 </div>
@@ -302,7 +349,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.kwh_vazio || ''}
                       onChange={(e) => updateField('kwh_vazio', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('kwh_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                   <div>
@@ -315,7 +362,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.preco_vazio || ''}
                       onChange={(e) => updateField('preco_vazio', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('preco_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                 </div>
@@ -330,7 +377,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.kwh_ponta || ''}
                       onChange={(e) => updateField('kwh_ponta', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('kwh_ponta', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                   <div>
@@ -343,7 +390,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.preco_ponta || ''}
                       onChange={(e) => updateField('preco_ponta', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('preco_ponta', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                 </div>
@@ -358,7 +405,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.kwh_cheias || ''}
                       onChange={(e) => updateField('kwh_cheias', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('kwh_cheias', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                   <div>
@@ -371,7 +418,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       min="0"
                       value={formData.preco_cheias || ''}
                       onChange={(e) => updateField('preco_cheias', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      className={inputClass('preco_cheias', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
                 </div>
