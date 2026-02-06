@@ -68,7 +68,7 @@ const Hero = () => {
           >
             <span className="text-foreground">MPgrupo:</span>
             <br />
-            <span className="gold-text font-medium">20 Anos</span>
+            <span className="gold-text font-medium">+ de 20 Anos</span>
             <br />
             <span className="text-foreground">a Ligar o Futuro</span>
           </motion.h1>

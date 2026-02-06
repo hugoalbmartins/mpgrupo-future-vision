@@ -103,7 +103,7 @@ const PartnershipsSection = () => {
                 Procuramos parceiros comerciais que valorizem a excelência e o compromisso. Oferecemos comissões competitivas, apoio contínuo e anos de experiência ao seu dispor.
               </p>
               <a
-                href="#contact"
+                href="#contact-parceria"
                 className="inline-block px-8 py-3 bg-gold text-primary-foreground font-body font-medium rounded-lg hover:bg-gold-light transition-all duration-300"
               >
                 Iniciar Parceria

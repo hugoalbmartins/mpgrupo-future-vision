@@ -28,7 +28,7 @@ const Footer = () => {
             >
               <h3 className="font-display text-3xl gold-text font-medium mb-4">MPgrupo</h3>
               <p className="font-body text-cream-muted leading-relaxed">
-                20 anos a construir parcerias de sucesso no mercado português.
+                + de 20 anos a construir parcerias de sucesso no mercado português.
               </p>
             </motion.div>
 

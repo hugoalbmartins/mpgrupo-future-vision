@@ -1,193 +1,127 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calculator, Linkedin, Facebook, Phone, X, ChevronLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Calculator, Linkedin, Facebook, Phone } from 'lucide-react';
 
 interface FloatingActionButtonsProps {
   onSimulatorClick: () => void;
 }
 
 const FloatingActionButtons = ({ onSimulatorClick }: FloatingActionButtonsProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const socialLinks = [
+  const items = [
+    {
+      icon: Calculator,
+      label: 'Simulador',
+      color: 'bg-gradient-to-r from-gold to-gold-light text-primary-foreground',
+      hoverColor: 'hover:shadow-gold/30',
+      onClick: onSimulatorClick,
+    },
     {
       icon: Linkedin,
-      href: 'https://www.linkedin.com/company/mp-grupo',
       label: 'LinkedIn',
-      color: 'from-[#0077B5] to-[#00A0DC]'
+      color: 'bg-[#0077B5] text-white',
+      hoverColor: 'hover:shadow-[#0077B5]/30',
+      href: 'https://www.linkedin.com/company/mp-grupo',
     },
     {
       icon: Facebook,
-      href: 'https://www.facebook.com/academiadeformacaoempreendedores',
       label: 'Facebook',
-      color: 'from-[#1877F2] to-[#4267B2]'
+      color: 'bg-[#1877F2] text-white',
+      hoverColor: 'hover:shadow-[#1877F2]/30',
+      href: 'https://www.facebook.com/academiadeformacaoempreendedores',
     },
     {
       icon: Phone,
-      href: 'https://wa.me/351928203793?text=Olá%2C%20gostaria%20de%20mais%20informações',
       label: 'WhatsApp',
-      color: 'from-[#25D366] to-[#128C7E]'
-    }
+      color: 'bg-[#25D366] text-white',
+      hoverColor: 'hover:shadow-[#25D366]/30',
+      href: 'https://wa.me/351928203793?text=Ol%C3%A1%2C%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es',
+    },
   ];
 
   return (
     <>
-      <div className="hidden md:block fixed right-0 top-1/2 -translate-y-1/2 z-50">
-        <AnimatePresence>
-          {isExpanded && (
+      <div className="hidden md:flex fixed right-0 top-1/2 -translate-y-1/2 z-50 flex-col gap-1.5">
+        {items.map((item, index) => {
+          const content = (
             <motion.div
-              initial={{ x: 100, opacity: 0 }}
+              initial={{ x: 60, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 100, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col gap-2 pr-2"
+              transition={{ duration: 0.4, delay: 0.3 + index * 0.08 }}
+              className={`group relative flex items-center rounded-l-lg overflow-hidden shadow-lg ${item.hoverColor} hover:shadow-xl transition-all duration-300 cursor-pointer`}
             >
-              <motion.button
-                whileHover={{ scale: 1.05, x: -4 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onSimulatorClick}
-                className="group relative bg-gradient-to-r from-gold to-gold-light text-primary-foreground px-4 py-3 rounded-l-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-3"
-              >
-                <Calculator className="w-5 h-5 flex-shrink-0" />
-                <span className="font-body font-medium text-sm whitespace-nowrap">
-                  Simulador
+              <div className={`flex items-center gap-0 ${item.color} py-2.5 pl-3 pr-3 rounded-l-lg transition-all duration-300 group-hover:pr-2`}>
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                <span className="max-w-0 overflow-hidden whitespace-nowrap font-body text-sm font-medium opacity-0 group-hover:max-w-[120px] group-hover:opacity-100 group-hover:ml-2.5 transition-all duration-300">
+                  {item.label}
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-gold-light to-gold opacity-0 group-hover:opacity-100 transition-opacity rounded-l-xl"></div>
-              </motion.button>
-
-              {socialLinks.map((social, index) => (
-                <motion.a
-                  key={social.label}
-                  initial={{ x: 100, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: 100, opacity: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  whileHover={{ scale: 1.05, x: -4 }}
-                  whileTap={{ scale: 0.95 }}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`group relative bg-gradient-to-r ${social.color} text-white p-3 rounded-l-xl shadow-lg hover:shadow-xl transition-all`}
-                  aria-label={social.label}
-                >
-                  <social.icon className="w-5 h-5" />
-                  <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 bg-background/95 text-foreground px-3 py-1 rounded-lg text-sm font-body whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg border border-border">
-                    {social.label}
-                  </span>
-                </motion.a>
-              ))}
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          );
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsExpanded(!isExpanded)}
-          className={`relative bg-gradient-to-br from-chocolate-medium to-chocolate-dark text-gold border-2 border-gold/30 p-3 rounded-l-xl shadow-2xl hover:shadow-gold/20 transition-all ${
-            isExpanded ? 'mt-2' : ''
-          }`}
-          aria-label={isExpanded ? 'Fechar menu' : 'Abrir menu'}
-        >
-          <AnimatePresence mode="wait">
-            {isExpanded ? (
-              <motion.div
-                key="close"
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+          if (item.href) {
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={item.label}
               >
-                <X className="w-6 h-6" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="open"
-                initial={{ rotate: 90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: -90, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChevronLeft className="w-6 h-6 animate-pulse" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.button>
+                {content}
+              </a>
+            );
+          }
+
+          return (
+            <button
+              key={item.label}
+              type="button"
+              onClick={item.onClick}
+              aria-label={item.label}
+            >
+              {content}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="md:hidden fixed bottom-[104px] right-6 z-50">
-        <AnimatePresence>
-          {isExpanded && (
+      <div className="md:hidden fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+        {items.map((item, index) => {
+          const content = (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 20, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="absolute bottom-full right-0 mb-3 flex flex-col gap-2 items-end"
+              transition={{ duration: 0.3, delay: 0.2 + index * 0.08 }}
+              className={`flex items-center justify-center w-12 h-12 rounded-full shadow-lg ${item.color} ${item.hoverColor} hover:shadow-xl transition-all duration-300`}
             >
-              <motion.button
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 20, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={onSimulatorClick}
-                className="bg-gradient-to-r from-gold to-gold-light text-primary-foreground p-3 rounded-full shadow-lg"
-              >
-                <Calculator className="w-5 h-5" />
-              </motion.button>
-              {socialLinks.map((social, index) => (
-                <motion.a
-                  key={social.label}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 20, opacity: 0 }}
-                  transition={{ duration: 0.3, delay: (index + 1) * 0.05 }}
-                  whileTap={{ scale: 0.9 }}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`bg-gradient-to-r ${social.color} text-white p-3 rounded-full shadow-lg`}
-                  aria-label={social.label}
-                >
-                  <social.icon className="w-5 h-5" />
-                </motion.a>
-              ))}
+              <item.icon className="w-5 h-5" />
             </motion.div>
-          )}
-        </AnimatePresence>
+          );
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="bg-gradient-to-br from-chocolate-medium to-chocolate-dark text-gold border-2 border-gold/30 p-4 rounded-full shadow-2xl"
-          aria-label={isExpanded ? 'Fechar menu' : 'Abrir menu'}
-        >
-          <AnimatePresence mode="wait">
-            {isExpanded ? (
-              <motion.div
-                key="close"
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+          if (item.href) {
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={item.label}
               >
-                <X className="w-6 h-6" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="open"
-                initial={{ rotate: 90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: -90, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Calculator className="w-6 h-6 animate-pulse" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.button>
+                {content}
+              </a>
+            );
+          }
+
+          return (
+            <button
+              key={item.label}
+              type="button"
+              onClick={item.onClick}
+              aria-label={item.label}
+            >
+              {content}
+            </button>
+          );
+        })}
       </div>
     </>
   );

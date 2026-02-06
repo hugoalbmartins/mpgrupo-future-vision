@@ -103,7 +103,7 @@ const CareersSection = () => {
                 Valorizamos profissionais ambiciosos que procuram fazer a diferença. Oferecemos ganhos acima da média, possibilidade de gestão de equipa e progressão de carreira.
               </p>
               <a
-                href="#contact"
+                href="#contact-candidatura"
                 className="inline-block px-8 py-3 bg-gold text-primary-foreground font-body font-medium rounded-lg hover:bg-gold-light transition-all duration-300"
               >
                 Candidate-se Agora

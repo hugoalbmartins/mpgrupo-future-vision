@@ -1,13 +1,7 @@
 import { motion } from "framer-motion";
-import { Phone, Mail, MapPin } from "lucide-react";
+import { Phone, Mail } from "lucide-react";
 
 const contactInfo = [
-  {
-    icon: MapPin,
-    title: "Localização",
-    content: "Portugal Continental",
-    link: null,
-  },
   {
     icon: Phone,
     title: "Telefone",
@@ -56,7 +50,7 @@ const ContactSection = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="grid md:grid-cols-3 gap-6"
+            className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto"
           >
             {contactInfo.map((info, index) => (
               <motion.div

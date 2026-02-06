@@ -1,25 +1,33 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronRight, ChevronLeft, Send, User, Phone, Mail, MessageSquare, CheckCircle2, Upload, X, FileText } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
+const SUBJECT_VALUES = [
+  "Parceria",
+  "Candidatura Espontânea",
+  "Análise da minha fatura (Energias ou telecomunicações)",
+] as const;
+
+type SubjectValue = typeof SUBJECT_VALUES[number];
+
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
   email: z.string().email("Email inválido").max(255),
   phone: z.string().min(9, "Telefone deve ter pelo menos 9 dígitos").max(20),
-  subject: z.enum(["Parceria", "Candidatura Espontânea", "Análise da minha fatura"]),
+  subject: z.enum(SUBJECT_VALUES),
   message: z.string().max(1000).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const subjects = [
-  { value: "Parceria", label: "Parceria Comercial", icon: "🤝" },
-  { value: "Candidatura Espontânea", label: "Candidatura Espontânea", icon: "💼" },
-  { value: "Análise da minha fatura", label: "Análise da Minha Fatura", icon: "📊" },
-] as const;
+const subjects: { value: SubjectValue; label: string; icon: string; hashKey: string }[] = [
+  { value: "Parceria", label: "Parceria Comercial", icon: "\u{1F91D}", hashKey: "parceria" },
+  { value: "Candidatura Espontânea", label: "Candidatura Espontânea", icon: "\u{1F4BC}", hashKey: "candidatura" },
+  { value: "Análise da minha fatura (Energias ou telecomunicações)", label: "Análise da Minha Fatura (Energias ou telecomunicações)", icon: "\u{1F4CA}", hashKey: "fatura" },
+];
 
 interface ContactFormProps {
   simulationData?: {
@@ -38,17 +46,44 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>("");
+  const hasAutoAdvanced = useRef(false);
   const [formData, setFormData] = useState<Partial<FormData>>({
     name: "",
     email: "",
     phone: "",
-    subject: simulationData ? "Análise da minha fatura" : undefined,
+    subject: simulationData ? "Análise da minha fatura (Energias ou telecomunicações)" : undefined,
     message: simulationData
       ? `Gostaria de saber mais sobre a mudança para ${simulationData.operadora_interesse || 'uma nova operadora'}.`
       : "",
   });
 
   const totalSteps = 3;
+
+  useEffect(() => {
+    if (hasAutoAdvanced.current) return;
+
+    const hash = window.location.hash;
+    const matched = subjects.find((s) => hash === `#contact-${s.hashKey}`);
+    if (matched) {
+      setFormData((prev) => ({ ...prev, subject: matched.value }));
+      setStep(2);
+      hasAutoAdvanced.current = true;
+    }
+
+    const handleHashChange = () => {
+      if (hasAutoAdvanced.current) return;
+      const newHash = window.location.hash;
+      const m = subjects.find((s) => newHash === `#contact-${s.hashKey}`);
+      if (m) {
+        setFormData((prev) => ({ ...prev, subject: m.value }));
+        setStep(2);
+        hasAutoAdvanced.current = true;
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   const updateField = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -97,6 +132,12 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
 
     if (currentStep === 1) {
+      if (!formData.subject) {
+        newErrors.subject = "Selecione um assunto";
+      }
+    }
+
+    if (currentStep === 2) {
       if (!formData.name || formData.name.length < 2) {
         newErrors.name = "Nome é obrigatório";
       }
@@ -105,12 +146,6 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
       }
       if (!formData.phone || formData.phone.length < 9) {
         newErrors.phone = "Telefone é obrigatório";
-      }
-    }
-
-    if (currentStep === 2) {
-      if (!formData.subject) {
-        newErrors.subject = "Selecione um assunto";
       }
     }
 
@@ -210,6 +245,8 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
     exit: { opacity: 0, x: -50 },
   };
 
+  const selectedSubjectLabel = subjects.find((s) => s.value === formData.subject)?.label;
+
   if (isSubmitted) {
     return (
       <section id="contact" className="py-24 lg:py-32 relative">
@@ -240,16 +277,13 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
 
   return (
     <section id="contact" className="py-24 lg:py-32 relative overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-chocolate-medium via-background to-chocolate-light" />
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
 
-      {/* Decorative */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-gold/3 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 container mx-auto px-6 lg:px-8">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -265,12 +299,11 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
             <span className="gold-text font-medium">Conversar</span>
           </h2>
           <p className="font-body text-lg text-cream-muted max-w-xl mx-auto">
-            Estamos prontos para construir o futuro consigo. 
+            Estamos prontos para construir o futuro consigo.
             Preencha o formulário e entraremos em contacto.
           </p>
         </motion.div>
 
-        {/* Form Container */}
         <div className="max-w-2xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -279,7 +312,6 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="glass-card p-8 lg:p-12"
           >
-            {/* Progress Bar */}
             <div className="mb-10">
               <div className="flex justify-between mb-3">
                 {[1, 2, 3].map((s) => (
@@ -293,7 +325,7 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
-                    {s < step ? "✓" : s}
+                    {s < step ? "\u2713" : s}
                   </div>
                 ))}
               </div>
@@ -307,7 +339,6 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
               </div>
             </div>
 
-            {/* Form Steps */}
             <div className="min-h-[280px]">
               <AnimatePresence mode="wait">
                 {step === 1 && (
@@ -320,6 +351,53 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                     transition={{ duration: 0.3 }}
                     className="space-y-6"
                   >
+                    <h3 className="font-display text-2xl text-foreground mb-6">
+                      Como podemos ajudar?
+                    </h3>
+
+                    <div className="grid gap-4">
+                      {subjects.map((subject) => (
+                        <button
+                          key={subject.value}
+                          type="button"
+                          onClick={() => updateField("subject", subject.value)}
+                          className={`w-full p-5 rounded-xl border text-left transition-all duration-300 ${
+                            formData.subject === subject.value
+                              ? "border-gold bg-gold/10"
+                              : "border-border bg-muted hover:border-gold/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className="text-2xl">{subject.icon}</span>
+                            <span className="font-body text-foreground">{subject.label}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {errors.subject && (
+                      <p className="text-destructive text-sm">{errors.subject}</p>
+                    )}
+                  </motion.div>
+                )}
+
+                {step === 2 && (
+                  <motion.div
+                    key="step2"
+                    variants={stepVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.3 }}
+                    className="space-y-6"
+                  >
+                    {selectedSubjectLabel && (
+                      <div className="px-4 py-2.5 bg-gold/10 border border-gold/30 rounded-lg">
+                        <p className="font-body text-sm text-gold font-medium">
+                          {selectedSubjectLabel}
+                        </p>
+                      </div>
+                    )}
+
                     <h3 className="font-display text-2xl text-foreground mb-6">
                       Informações de Contacto
                     </h3>
@@ -385,44 +463,6 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                   </motion.div>
                 )}
 
-                {step === 2 && (
-                  <motion.div
-                    key="step2"
-                    variants={stepVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.3 }}
-                    className="space-y-6"
-                  >
-                    <h3 className="font-display text-2xl text-foreground mb-6">
-                      Como podemos ajudar?
-                    </h3>
-
-                    <div className="grid gap-4">
-                      {subjects.map((subject) => (
-                        <button
-                          key={subject.value}
-                          onClick={() => updateField("subject", subject.value)}
-                          className={`w-full p-5 rounded-xl border text-left transition-all duration-300 ${
-                            formData.subject === subject.value
-                              ? "border-gold bg-gold/10"
-                              : "border-border bg-muted hover:border-gold/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <span className="text-2xl">{subject.icon}</span>
-                            <span className="font-body text-foreground">{subject.label}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    {errors.subject && (
-                      <p className="text-destructive text-sm">{errors.subject}</p>
-                    )}
-                  </motion.div>
-                )}
-
                 {step === 3 && (
                   <motion.div
                     key="step3"
@@ -433,6 +473,14 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                     transition={{ duration: 0.3 }}
                     className="space-y-6"
                   >
+                    {selectedSubjectLabel && (
+                      <div className="px-4 py-2.5 bg-gold/10 border border-gold/30 rounded-lg">
+                        <p className="font-body text-sm text-gold font-medium">
+                          {selectedSubjectLabel}
+                        </p>
+                      </div>
+                    )}
+
                     <h3 className="font-display text-2xl text-foreground mb-6">
                       Mensagem Adicional
                     </h3>
@@ -466,7 +514,7 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                                 Clique para selecionar um arquivo
                               </p>
                               <p className="font-body text-xs text-cream-muted">
-                                PDF, JPG ou PNG (máx. 5MB)
+                                PDF, JPG ou PNG (max. 5MB)
                               </p>
                             </div>
                           </div>
@@ -507,7 +555,6 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                       )}
                     </div>
 
-                    {/* Summary */}
                     <div className="p-4 bg-muted/50 rounded-lg border border-border">
                       <p className="font-body text-sm text-cream-muted mb-2">Resumo:</p>
                       <p className="font-body text-foreground">
@@ -520,9 +567,9 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
               </AnimatePresence>
             </div>
 
-            {/* Navigation */}
             <div className="flex justify-between mt-8 pt-6 border-t border-border">
               <button
+                type="button"
                 onClick={prevStep}
                 disabled={step === 1}
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg font-body transition-all ${
@@ -537,6 +584,7 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
 
               {step < totalSteps ? (
                 <button
+                  type="button"
                   onClick={nextStep}
                   className="flex items-center gap-2 px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium transition-all hover:bg-gold-light"
                 >
@@ -545,6 +593,7 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
                   className="flex items-center gap-2 px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium transition-all hover:bg-gold-light gold-glow disabled:opacity-50 disabled:cursor-not-allowed"
