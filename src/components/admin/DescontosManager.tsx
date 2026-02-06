@@ -335,7 +335,7 @@ const DescontosManager = () => {
 
               <div className="mt-6 pt-6 border-t border-border">
                 <h4 className="font-body font-medium text-foreground text-base mb-4">
-                  Desconto Temporário Mensal (Promocional)
+                  Campanha Adicional (Promocional)
                 </h4>
                 <div className="grid md:grid-cols-3 gap-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                   <div>
@@ -382,7 +382,7 @@ const DescontosManager = () => {
 
                 <div className="mt-4 p-4 bg-background rounded-lg border border-border">
                   <p className="font-body text-xs text-cream-muted mb-3">
-                    Condições de Acesso ao Desconto Temporário:
+                    Condições de Acesso à Campanha Adicional:
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">

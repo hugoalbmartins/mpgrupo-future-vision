@@ -19,6 +19,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   const [resultados, setResultados] = useState<ResultadoComparacao[]>([]);
   const [custoAtual, setCustoAtual] = useState(0);
   const [selectedOperadoraId, setSelectedOperadoraId] = useState<string | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -70,7 +71,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       }
 
       resultadosCalculados.sort((a, b) => b.poupanca - a.poupanca);
-      setResultados(resultadosCalculados);
+      setResultados(resultadosCalculados.slice(0, 3));
     } catch (error) {
       toast.error('Erro ao calcular resultados');
       console.error(error);
@@ -260,12 +261,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     return `${baseClass} border-border`;
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = (filteredResultados?: ResultadoComparacao[]) => {
     try {
       generateSimulationPDF({
         simulacao,
         custoAtual,
-        resultados,
+        resultados: filteredResultados || resultados,
         dataGeracao: new Date(),
       });
       toast.success('Relatório PDF gerado com sucesso!');
@@ -273,6 +274,25 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       toast.error('Erro ao gerar PDF');
       console.error(error);
     }
+  };
+
+  const handleExportClick = () => {
+    if (resultados.length <= 1) {
+      handleExportPDF();
+      return;
+    }
+    setShowExportDialog(true);
+  };
+
+  const handleExportAll = () => {
+    setShowExportDialog(false);
+    handleExportPDF();
+  };
+
+  const handleExportSelected = (operadoraId: string) => {
+    setShowExportDialog(false);
+    const filtered = resultados.filter((r) => r.operadora.id === operadoraId);
+    handleExportPDF(filtered);
   };
 
   const handleWhatsAppContact = () => {
@@ -906,7 +926,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         <AlertCircle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <h4 className="font-body font-bold text-foreground text-lg mb-1">
-                            {r.operadora.nome} - Desconto Promocional Temporário
+                            {r.operadora.nome} - Campanha Adicional
                           </h4>
                           {dt.descricao && (
                             <p className="font-body text-sm text-amber-600 dark:text-amber-400 mb-2">
@@ -979,7 +999,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             <div className="flex flex-col sm:flex-row gap-3 items-center">
               <button
                 type="button"
-                onClick={handleExportPDF}
+                onClick={handleExportClick}
                 className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-gold text-gold rounded-lg font-body font-medium hover:bg-gold hover:text-primary-foreground transition-all"
               >
                 <Download className="w-5 h-5" />
@@ -1014,6 +1034,80 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
         </div>
         )}
       </DialogContent>
+
+      {showExportDialog && (
+        <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl text-center mb-2">
+                Exportar Relatório PDF
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              {selectedOperadoraId ? (
+                <>
+                  <p className="font-body text-sm text-cream-muted text-center">
+                    Pretende exportar todas as operadoras ou apenas a selecionada?
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={handleExportAll}
+                      className="w-full px-6 py-3 border-2 border-gold text-gold rounded-lg font-body font-medium hover:bg-gold hover:text-primary-foreground transition-all"
+                    >
+                      Todas as operadoras ({resultados.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportSelected(selectedOperadoraId)}
+                      className="w-full px-6 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                    >
+                      Apenas {resultados.find((r) => r.operadora.id === selectedOperadoraId)?.operadora.nome}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="font-body text-sm text-cream-muted text-center">
+                    Selecione as operadoras a incluir no relatório:
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={handleExportAll}
+                      className="w-full px-6 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                    >
+                      Todas as operadoras ({resultados.length})
+                    </button>
+                    {resultados.map((r) => (
+                      <button
+                        key={r.operadora.id}
+                        type="button"
+                        onClick={() => handleExportSelected(r.operadora.id)}
+                        className="w-full px-6 py-3 border border-border rounded-lg font-body text-foreground hover:border-gold hover:text-gold transition-all flex items-center justify-between"
+                      >
+                        <span>{r.operadora.nome}</span>
+                        <span className={`text-sm font-medium ${r.poupanca > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          {r.poupanca > 0 ? '+' : ''}{formatCurrency(r.poupanca)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowExportDialog(false)}
+                className="w-full px-6 py-2 text-cream-muted font-body text-sm hover:text-foreground transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 };

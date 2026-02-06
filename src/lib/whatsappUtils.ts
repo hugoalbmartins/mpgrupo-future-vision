@@ -61,7 +61,7 @@ export const generateWhatsAppAdesaoMessage = (data: WhatsAppAdesaoData): string 
 
   if (selectedResultado.desconto_temporario?.disponivel) {
     const dt = selectedResultado.desconto_temporario;
-    message += `\n*Desconto Promocional:*\n`;
+    message += `\n*Campanha Adicional:*\n`;
     message += `- ${dt.descricao || `€${dt.valor_mensal.toFixed(2)}/mês durante ${dt.duracao_meses} meses`}\n`;
     message += `- Poupança no período: €${dt.poupanca_periodo_desconto.toFixed(2)}\n`;
   }

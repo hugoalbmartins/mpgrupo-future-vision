@@ -133,7 +133,7 @@ export const generateSimulationPDF = (data: PDFData): void => {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textColor);
 
-  const topResults = data.resultados.slice(0, 5);
+  const topResults = data.resultados;
 
   for (let i = 0; i < topResults.length; i++) {
     const resultado = topResults[i];
@@ -275,70 +275,65 @@ export const generateSimulationPDF = (data: PDFData): void => {
     }
   }
 
-  const resultadosComDescontoTemp = data.resultados.filter((r) => {
-    if (!r.desconto_temporario || r.desconto_temporario.disponivel) return false;
-    const custoMensalAtual = (data.custoAtual / data.simulacao.dias_fatura) * 30;
-    const custoMensalSimulado = (r.subtotal / data.simulacao.dias_fatura) * 30;
-    const custoComDesconto = custoMensalSimulado - r.desconto_temporario.valor_mensal;
-    const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
-    return poupancaMensalTotal > 0;
-  });
+  const resultadosComCampanha = data.resultados.filter((r) => r.desconto_temporario);
 
-  if (resultadosComDescontoTemp.length > 0) {
+  if (resultadosComCampanha.length > 0) {
     if (yPosition > pageHeight - 60) {
       doc.addPage();
       yPosition = margin;
     }
 
-    yPosition = addSection('Descontos Promocionais Disponíveis', yPosition);
+    yPosition = addSection('Campanhas Adicionais', yPosition);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...textColor);
 
-    for (const resultado of resultadosComDescontoTemp) {
-      if (yPosition > pageHeight - 30) {
+    for (const resultado of resultadosComCampanha) {
+      if (yPosition > pageHeight - 40) {
         doc.addPage();
         yPosition = margin;
       }
 
       const dt = resultado.desconto_temporario!;
-      const requisitos: string[] = [];
-      if (dt.requer_dd && !data.simulacao.debito_direto) requisitos.push('Débito Direto');
-      if (dt.requer_fe && !data.simulacao.fatura_eletronica) requisitos.push('Fatura Eletrónica');
-
-      const custoMensalAtual = (data.custoAtual / data.simulacao.dias_fatura) * 30;
-      const custoMensalSimulado = (resultado.subtotal / data.simulacao.dias_fatura) * 30;
-      const custoComDesconto = custoMensalSimulado - dt.valor_mensal;
-      const poupancaMensalTotal = custoMensalAtual - custoComDesconto;
-      const poupancaTotalPeriodo = poupancaMensalTotal * dt.duracao_meses;
 
       doc.setFont('helvetica', 'bold');
       doc.text(`${resultado.operadora.nome}:`, margin + 5, yPosition);
 
       doc.setFont('helvetica', 'normal');
       yPosition += 5;
-      doc.text(`Caso aderisse com ${requisitos.join(' e ')}, a poupança total`, margin + 5, yPosition);
-      yPosition += 4;
-      doc.text(`em relação à fatura atual seria de `, margin + 5, yPosition);
+
+      if (dt.descricao) {
+        doc.text(`${dt.descricao}`, margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      doc.text(`Desconto mensal: €${dt.valor_mensal.toFixed(2)} durante ${dt.duracao_meses} ${dt.duracao_meses === 1 ? 'mês' : 'meses'}`, margin + 5, yPosition);
+      yPosition += 5;
+
+      doc.text(`Custo mensal com campanha: €${dt.custo_mensal_com_desconto.toFixed(2)}`, margin + 5, yPosition);
+      yPosition += 5;
+
+      doc.text(`Custo mensal após campanha: €${dt.custo_mensal_apos_desconto.toFixed(2)}`, margin + 5, yPosition);
+      yPosition += 5;
 
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 102, 204);
-      doc.text(`€${poupancaTotalPeriodo.toFixed(2)}`, margin + 70, yPosition);
-
+      doc.text(`Poupança total no período: €${dt.poupanca_periodo_desconto.toFixed(2)}`, margin + 5, yPosition);
+      doc.setTextColor(...textColor);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textColor);
-      yPosition += 4;
-      doc.text(`durante os primeiros ${dt.duracao_meses} ${dt.duracao_meses === 1 ? 'mês' : 'meses'}`, margin + 5, yPosition);
 
-      if (dt.descricao) {
-        yPosition += 4;
-        doc.setFontSize(8);
-        doc.text(`(${dt.descricao})`, margin + 5, yPosition);
-        doc.setFontSize(9);
+      if (!dt.disponivel) {
+        yPosition += 5;
+        const requisitos: string[] = [];
+        if (dt.requer_dd && !data.simulacao.debito_direto) requisitos.push('Débito Direto');
+        if (dt.requer_fe && !data.simulacao.fatura_eletronica) requisitos.push('Fatura Eletrónica');
+        if (requisitos.length > 0) {
+          doc.setFontSize(8);
+          doc.text(`Requer adesão a: ${requisitos.join(' e ')}`, margin + 5, yPosition);
+          doc.setFontSize(9);
+        }
       }
-
-      doc.setTextColor(...textColor);
 
       yPosition += 10;
     }
