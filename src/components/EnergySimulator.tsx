@@ -27,6 +27,8 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
     fatura_eletronica: false,
   });
 
+  const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
+
   const updateField = <K extends keyof SimulacaoInput>(field: K, value: SimulacaoInput[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (fieldErrors.has(field)) {
@@ -36,6 +38,26 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
         return next;
       });
     }
+  };
+
+  const numericDisplayValue = (field: string, numericVal: number | undefined): string | number => {
+    if (field in rawInputs) return rawInputs[field];
+    if (!numericVal) return '';
+    return numericVal;
+  };
+
+  const handleNumericChange = (field: keyof SimulacaoInput, raw: string) => {
+    setRawInputs((prev) => ({ ...prev, [field]: raw }));
+    const parsed = parseFloat(raw);
+    updateField(field, (isNaN(parsed) ? 0 : parsed) as never);
+  };
+
+  const handleNumericBlur = (field: string) => {
+    setRawInputs((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const inputClass = (field: string, base: string) =>
@@ -100,6 +122,7 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
     setShowResults(false);
     setStep(1);
     setFieldErrors(new Set());
+    setRawInputs({});
     setFormData({
       operadora_atual: '',
       potencia: 6.9,
@@ -184,8 +207,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.valor_potencia_diaria_atual || ''}
-                onChange={(e) => updateField('valor_potencia_diaria_atual', parseFloat(e.target.value) || 0)}
+                value={numericDisplayValue('valor_potencia_diaria_atual', formData.valor_potencia_diaria_atual)}
+                onChange={(e) => handleNumericChange('valor_potencia_diaria_atual', e.target.value)}
+                onBlur={() => handleNumericBlur('valor_potencia_diaria_atual')}
                 required
                 placeholder="Ex: 0.3569"
                 className={inputClass('valor_potencia_diaria_atual', 'w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
@@ -248,8 +272,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.kwh_simples || ''}
-                    onChange={(e) => updateField('kwh_simples', parseFloat(e.target.value) || 0)}
+                    value={numericDisplayValue('kwh_simples', formData.kwh_simples)}
+                    onChange={(e) => handleNumericChange('kwh_simples', e.target.value)}
+                    onBlur={() => handleNumericBlur('kwh_simples')}
                     className={inputClass('kwh_simples', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                   />
                 </div>
@@ -261,8 +286,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                     type="number"
                     step="0.000001"
                     min="0"
-                    value={formData.preco_simples || ''}
-                    onChange={(e) => updateField('preco_simples', parseFloat(e.target.value) || 0)}
+                    value={numericDisplayValue('preco_simples', formData.preco_simples)}
+                    onChange={(e) => handleNumericChange('preco_simples', e.target.value)}
+                    onBlur={() => handleNumericBlur('preco_simples')}
                     className={inputClass('preco_simples', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                   />
                 </div>
@@ -283,8 +309,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.kwh_vazio || ''}
-                      onChange={(e) => updateField('kwh_vazio', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('kwh_vazio', formData.kwh_vazio)}
+                      onChange={(e) => handleNumericChange('kwh_vazio', e.target.value)}
+                      onBlur={() => handleNumericBlur('kwh_vazio')}
                       className={inputClass('kwh_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -296,8 +323,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.000001"
                       min="0"
-                      value={formData.preco_vazio || ''}
-                      onChange={(e) => updateField('preco_vazio', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('preco_vazio', formData.preco_vazio)}
+                      onChange={(e) => handleNumericChange('preco_vazio', e.target.value)}
+                      onBlur={() => handleNumericBlur('preco_vazio')}
                       className={inputClass('preco_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -311,8 +339,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.kwh_fora_vazio || ''}
-                      onChange={(e) => updateField('kwh_fora_vazio', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('kwh_fora_vazio', formData.kwh_fora_vazio)}
+                      onChange={(e) => handleNumericChange('kwh_fora_vazio', e.target.value)}
+                      onBlur={() => handleNumericBlur('kwh_fora_vazio')}
                       className={inputClass('kwh_fora_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -324,8 +353,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.000001"
                       min="0"
-                      value={formData.preco_fora_vazio || ''}
-                      onChange={(e) => updateField('preco_fora_vazio', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('preco_fora_vazio', formData.preco_fora_vazio)}
+                      onChange={(e) => handleNumericChange('preco_fora_vazio', e.target.value)}
+                      onBlur={() => handleNumericBlur('preco_fora_vazio')}
                       className={inputClass('preco_fora_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -347,8 +377,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.kwh_vazio || ''}
-                      onChange={(e) => updateField('kwh_vazio', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('kwh_vazio', formData.kwh_vazio)}
+                      onChange={(e) => handleNumericChange('kwh_vazio', e.target.value)}
+                      onBlur={() => handleNumericBlur('kwh_vazio')}
                       className={inputClass('kwh_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -360,8 +391,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.000001"
                       min="0"
-                      value={formData.preco_vazio || ''}
-                      onChange={(e) => updateField('preco_vazio', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('preco_vazio', formData.preco_vazio)}
+                      onChange={(e) => handleNumericChange('preco_vazio', e.target.value)}
+                      onBlur={() => handleNumericBlur('preco_vazio')}
                       className={inputClass('preco_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -375,8 +407,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.kwh_ponta || ''}
-                      onChange={(e) => updateField('kwh_ponta', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('kwh_ponta', formData.kwh_ponta)}
+                      onChange={(e) => handleNumericChange('kwh_ponta', e.target.value)}
+                      onBlur={() => handleNumericBlur('kwh_ponta')}
                       className={inputClass('kwh_ponta', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -388,8 +421,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.000001"
                       min="0"
-                      value={formData.preco_ponta || ''}
-                      onChange={(e) => updateField('preco_ponta', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('preco_ponta', formData.preco_ponta)}
+                      onChange={(e) => handleNumericChange('preco_ponta', e.target.value)}
+                      onBlur={() => handleNumericBlur('preco_ponta')}
                       className={inputClass('preco_ponta', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -403,8 +437,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.kwh_cheias || ''}
-                      onChange={(e) => updateField('kwh_cheias', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('kwh_cheias', formData.kwh_cheias)}
+                      onChange={(e) => handleNumericChange('kwh_cheias', e.target.value)}
+                      onBlur={() => handleNumericBlur('kwh_cheias')}
                       className={inputClass('kwh_cheias', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
@@ -416,8 +451,9 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
                       type="number"
                       step="0.000001"
                       min="0"
-                      value={formData.preco_cheias || ''}
-                      onChange={(e) => updateField('preco_cheias', parseFloat(e.target.value) || 0)}
+                      value={numericDisplayValue('preco_cheias', formData.preco_cheias)}
+                      onChange={(e) => handleNumericChange('preco_cheias', e.target.value)}
+                      onBlur={() => handleNumericBlur('preco_cheias')}
                       className={inputClass('preco_cheias', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
                     />
                   </div>
