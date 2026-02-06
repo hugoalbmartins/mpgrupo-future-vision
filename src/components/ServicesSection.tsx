@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Phone, Zap, Sun, Award, TrendingUp, Shield } from "lucide-react";
+import { Phone, Zap, Sun, Award, TrendingUp, Shield, ArrowRight } from "lucide-react";
 
 const services = [
   {
@@ -30,6 +30,12 @@ const achievements = [
   { icon: TrendingUp, value: "1M+", label: "Clientes Satisfeitos" },
   { icon: Shield, value: "100%", label: "Compromisso" },
 ];
+
+const scrollToContactFatura = (e: React.MouseEvent) => {
+  e.preventDefault();
+  window.location.hash = '#contact-fatura';
+  document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+};
 
 const ServicesSection = () => {
   const containerVariants = {
@@ -116,6 +122,15 @@ const ServicesSection = () => {
                   <p className="font-display text-3xl gold-text font-medium">{service.stat}</p>
                   <p className="font-body text-sm text-cream-muted">{service.statLabel}</p>
                 </div>
+
+                <a
+                  href="#contact-fatura"
+                  onClick={scrollToContactFatura}
+                  className="inline-flex items-center gap-1.5 mt-5 font-body text-sm text-gold hover:text-gold-light transition-colors duration-300 group/link"
+                >
+                  + Informações
+                  <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover/link:translate-x-1" />
+                </a>
               </div>
             </motion.div>
           ))}
