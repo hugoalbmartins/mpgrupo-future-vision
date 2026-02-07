@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { SimulacaoInput, CicloHorario, POTENCIAS_DISPONIVEIS, OPERADORAS_MERCADO_LIVRE } from '@/types/energy';
-import { Zap, Building2, Calendar, ClockIcon } from 'lucide-react';
+import { SimulacaoInput, TipoSimulacao } from '@/types/energy';
+import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import SimulatorResults from './SimulatorResults';
+import SimulatorTypeSelection from './simulator/SimulatorTypeSelection';
+import SimulatorElectricityForm from './simulator/SimulatorElectricityForm';
+import SimulatorGasForm from './simulator/SimulatorGasForm';
 
 interface EnergySimulatorProps {
   open: boolean;
@@ -11,11 +14,12 @@ interface EnergySimulatorProps {
 }
 
 const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState<SimulacaoInput>({
+    tipo_simulacao: undefined,
     operadora_atual: '',
     potencia: 6.9,
     valor_potencia_diaria_atual: 0,
@@ -31,10 +35,10 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
 
   const updateField = <K extends keyof SimulacaoInput>(field: K, value: SimulacaoInput[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors.has(field)) {
+    if (fieldErrors.has(field as string)) {
       setFieldErrors((prev) => {
         const next = new Set(prev);
-        next.delete(field);
+        next.delete(field as string);
         return next;
       });
     }
@@ -63,25 +67,12 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
   const inputClass = (field: string, base: string) =>
     `${base} ${fieldErrors.has(field) ? 'border-red-500 ring-1 ring-red-500' : ''}`;
 
-  const handleCicloChange = (ciclo: CicloHorario) => {
-    setFormData((prev) => ({
-      ...prev,
-      ciclo_horario: ciclo,
-      kwh_simples: ciclo === 'simples' ? prev.kwh_simples : undefined,
-      preco_simples: ciclo === 'simples' ? prev.preco_simples : undefined,
-      kwh_vazio: undefined,
-      preco_vazio: undefined,
-      kwh_fora_vazio: undefined,
-      preco_fora_vazio: undefined,
-      kwh_ponta: undefined,
-      preco_ponta: undefined,
-      kwh_cheias: undefined,
-      preco_cheias: undefined,
-    }));
-  };
-
-  const validateForm = (): boolean => {
+  const validateElectricityForm = (): boolean => {
     const errors = new Set<string>();
+
+    if (!formData.operadora_atual) {
+      errors.add('operadora_atual');
+    }
 
     if (!formData.valor_potencia_diaria_atual || formData.valor_potencia_diaria_atual === 0) {
       errors.add('valor_potencia_diaria_atual');
@@ -113,17 +104,73 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
     return true;
   };
 
-  const handleSimulate = () => {
-    if (!validateForm()) return;
-    setShowResults(true);
+  const validateGasForm = (): boolean => {
+    const errors = new Set<string>();
+
+    if (!formData.escalao_gas) {
+      errors.add('escalao_gas');
+    }
+
+    if (!formData.gas_valor_escalao_diario_atual || formData.gas_valor_escalao_diario_atual === 0) {
+      errors.add('gas_valor_escalao_diario_atual');
+    }
+
+    if (!formData.gas_kwh_consumidos || formData.gas_kwh_consumidos === 0) {
+      errors.add('gas_kwh_consumidos');
+    }
+
+    if (!formData.gas_preco_kwh_atual || formData.gas_preco_kwh_atual === 0) {
+      errors.add('gas_preco_kwh_atual');
+    }
+
+    setFieldErrors(errors);
+
+    if (errors.size > 0) {
+      toast.error('Preencha todos os campos obrigatórios de gás com valores superiores a 0.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleTypeSelection = (tipo: TipoSimulacao) => {
+    updateField('tipo_simulacao', tipo);
+    setStep(1);
+  };
+
+  const handleNextFromElectricity = () => {
+    if (!validateElectricityForm()) return;
+
+    if (formData.tipo_simulacao === 'eletricidade') {
+      setShowResults(true);
+    } else if (formData.tipo_simulacao === 'dual') {
+      setStep(2);
+    }
+  };
+
+  const handleNextFromGas = () => {
+    if (formData.tipo_simulacao === 'gas' && step === 1) {
+      if (!validateGasForm()) return;
+      setShowResults(true);
+    } else if (formData.tipo_simulacao === 'dual' && step === 2) {
+      if (!validateGasForm()) return;
+      setShowResults(true);
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 0) {
+      setStep(step - 1);
+      setFieldErrors(new Set());
+    }
   };
 
   const handleReset = () => {
     setShowResults(false);
-    setStep(1);
+    setStep(0);
     setFieldErrors(new Set());
     setRawInputs({});
     setFormData({
+      tipo_simulacao: undefined,
       operadora_atual: '',
       potencia: 6.9,
       valor_potencia_diaria_atual: 0,
@@ -147,6 +194,26 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
     );
   }
 
+  const getStepTitle = () => {
+    if (step === 0) return 'Selecione o Tipo de Simulação';
+    if (step === 1 && formData.tipo_simulacao === 'gas') return 'Dados de Gás';
+    if (step === 1) return 'Dados de Eletricidade';
+    if (step === 2) return 'Dados de Gás';
+    return 'Simulação';
+  };
+
+  const getStepSubtitle = () => {
+    if (step === 0) return 'Escolha o tipo de energia que pretende simular';
+    if (step === 1 && formData.tipo_simulacao === 'gas') return 'Preencha os dados da sua fatura de gás atual';
+    if (step === 1) return 'Preencha os dados da sua fatura de eletricidade atual';
+    if (step === 2) return 'Preencha os dados da sua fatura de gás atual';
+    return '';
+  };
+
+  const showCommonFields =
+    (formData.tipo_simulacao === 'eletricidade' && step === 1) ||
+    (formData.tipo_simulacao === 'dual' && step === 1);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -155,358 +222,109 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
             <span className="gold-text">Simulador</span> de Poupança Energética
           </DialogTitle>
           <p className="font-body text-cream-muted text-center">
-            Descubra quanto pode poupar ao mudar de operadora
+            {getStepSubtitle()}
           </p>
         </DialogHeader>
 
-        <div className="space-y-8 pt-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
-                <Building2 className="w-4 h-4 text-gold" />
-                Operadora Atual *
-              </label>
-              <select
-                value={formData.operadora_atual}
-                onChange={(e) => updateField('operadora_atual', e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+        <div className="space-y-6 pt-6">
+          {step > 0 && (
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-2 text-cream-muted hover:text-gold transition-colors font-body"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Voltar
+            </button>
+          )}
+
+          {step === 0 && (
+            <SimulatorTypeSelection onSelect={handleTypeSelection} />
+          )}
+
+          {step === 1 && formData.tipo_simulacao === 'gas' && (
+            <SimulatorGasForm
+              formData={formData}
+              updateField={updateField}
+              numericDisplayValue={numericDisplayValue}
+              handleNumericChange={handleNumericChange}
+              handleNumericBlur={handleNumericBlur}
+              fieldErrors={fieldErrors}
+              inputClass={inputClass}
+            />
+          )}
+
+          {step === 1 && (formData.tipo_simulacao === 'eletricidade' || formData.tipo_simulacao === 'dual') && (
+            <SimulatorElectricityForm
+              formData={formData}
+              updateField={updateField}
+              numericDisplayValue={numericDisplayValue}
+              handleNumericChange={handleNumericChange}
+              handleNumericBlur={handleNumericBlur}
+              fieldErrors={fieldErrors}
+              inputClass={inputClass}
+              showCommonFields={showCommonFields}
+            />
+          )}
+
+          {step === 2 && formData.tipo_simulacao === 'dual' && (
+            <SimulatorGasForm
+              formData={formData}
+              updateField={updateField}
+              numericDisplayValue={numericDisplayValue}
+              handleNumericChange={handleNumericChange}
+              handleNumericBlur={handleNumericBlur}
+              fieldErrors={fieldErrors}
+              inputClass={inputClass}
+            />
+          )}
+
+          {step > 0 && (
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="px-6 py-3 border border-border rounded-lg font-body text-cream-muted hover:text-foreground transition-all"
               >
-                <option value="">Selecione...</option>
-                {OPERADORAS_MERCADO_LIVRE.map((op) => (
-                  <option key={op} value={op}>{op}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
-                <Zap className="w-4 h-4 text-gold" />
-                Potência Contratada (kVA) *
-              </label>
-              <select
-                value={formData.potencia}
-                onChange={(e) => updateField('potencia', parseFloat(e.target.value))}
-                required
-                className="w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-              >
-                {POTENCIAS_DISPONIVEIS.map((pot) => (
-                  <option key={pot} value={pot}>{pot} kVA</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
-                <Zap className="w-4 h-4 text-gold" />
-                Valor Potência Diária Atual (€/dia) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={numericDisplayValue('valor_potencia_diaria_atual', formData.valor_potencia_diaria_atual)}
-                onChange={(e) => handleNumericChange('valor_potencia_diaria_atual', e.target.value)}
-                onBlur={() => handleNumericBlur('valor_potencia_diaria_atual')}
-                required
-                placeholder="Ex: 0.3569"
-                className={inputClass('valor_potencia_diaria_atual', 'w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-              />
-              <p className="font-body text-xs text-cream-muted mt-1">
-                Encontra este valor na sua fatura atual
-              </p>
-            </div>
-
-            <div>
-              <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
-                <Calendar className="w-4 h-4 text-gold" />
-                Dias da Fatura *
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="365"
-                value={formData.dias_fatura}
-                onChange={(e) => updateField('dias_fatura', parseInt(e.target.value) || 30)}
-                className="w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-3">
-              <ClockIcon className="w-4 h-4 text-gold" />
-              Ciclo Horário *
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {(['simples', 'bi-horario', 'tri-horario'] as CicloHorario[]).map((ciclo) => (
+                Cancelar
+              </button>
+              {(step === 1 && formData.tipo_simulacao === 'gas') && (
                 <button
-                  key={ciclo}
                   type="button"
-                  onClick={() => handleCicloChange(ciclo)}
-                  className={`p-4 rounded-lg border-2 transition-all font-body ${
-                    formData.ciclo_horario === ciclo
-                      ? 'border-gold bg-gold/10 text-foreground'
-                      : 'border-border bg-muted text-cream-muted hover:border-gold/50'
-                  }`}
+                  onClick={handleNextFromGas}
+                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
                 >
-                  {ciclo === 'simples' && 'Simples'}
-                  {ciclo === 'bi-horario' && 'Bi-Horário'}
-                  {ciclo === 'tri-horario' && 'Tri-Horário'}
+                  Simular Poupança
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {formData.ciclo_horario === 'simples' && (
-            <div className="p-6 bg-muted/50 rounded-lg border border-border space-y-4">
-              <h3 className="font-body font-medium text-foreground">Consumo Simples</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-body text-sm text-cream-muted mb-2 block">
-                    kWh Consumidos *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={numericDisplayValue('kwh_simples', formData.kwh_simples)}
-                    onChange={(e) => handleNumericChange('kwh_simples', e.target.value)}
-                    onBlur={() => handleNumericBlur('kwh_simples')}
-                    className={inputClass('kwh_simples', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                  />
-                </div>
-                <div>
-                  <label className="font-body text-sm text-cream-muted mb-2 block">
-                    Preço (€/kWh) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    value={numericDisplayValue('preco_simples', formData.preco_simples)}
-                    onChange={(e) => handleNumericChange('preco_simples', e.target.value)}
-                    onBlur={() => handleNumericBlur('preco_simples')}
-                    className={inputClass('preco_simples', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                  />
-                </div>
-              </div>
+              )}
+              {(step === 1 && formData.tipo_simulacao === 'eletricidade') && (
+                <button
+                  type="button"
+                  onClick={handleNextFromElectricity}
+                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                >
+                  Simular Poupança
+                </button>
+              )}
+              {(step === 1 && formData.tipo_simulacao === 'dual') && (
+                <button
+                  type="button"
+                  onClick={handleNextFromElectricity}
+                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                >
+                  Seguinte
+                </button>
+              )}
+              {(step === 2 && formData.tipo_simulacao === 'dual') && (
+                <button
+                  type="button"
+                  onClick={handleNextFromGas}
+                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                >
+                  Simular Poupança
+                </button>
+              )}
             </div>
           )}
-
-          {formData.ciclo_horario === 'bi-horario' && (
-            <div className="p-6 bg-muted/50 rounded-lg border border-border space-y-4">
-              <h3 className="font-body font-medium text-foreground">Consumo Bi-Horário</h3>
-              <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      kWh Vazio *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={numericDisplayValue('kwh_vazio', formData.kwh_vazio)}
-                      onChange={(e) => handleNumericChange('kwh_vazio', e.target.value)}
-                      onBlur={() => handleNumericBlur('kwh_vazio')}
-                      className={inputClass('kwh_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      Preço Vazio (€/kWh) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      min="0"
-                      value={numericDisplayValue('preco_vazio', formData.preco_vazio)}
-                      onChange={(e) => handleNumericChange('preco_vazio', e.target.value)}
-                      onBlur={() => handleNumericBlur('preco_vazio')}
-                      className={inputClass('preco_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      kWh Fora de Vazio *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={numericDisplayValue('kwh_fora_vazio', formData.kwh_fora_vazio)}
-                      onChange={(e) => handleNumericChange('kwh_fora_vazio', e.target.value)}
-                      onBlur={() => handleNumericBlur('kwh_fora_vazio')}
-                      className={inputClass('kwh_fora_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      Preço Fora de Vazio (€/kWh) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      min="0"
-                      value={numericDisplayValue('preco_fora_vazio', formData.preco_fora_vazio)}
-                      onChange={(e) => handleNumericChange('preco_fora_vazio', e.target.value)}
-                      onBlur={() => handleNumericBlur('preco_fora_vazio')}
-                      className={inputClass('preco_fora_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {formData.ciclo_horario === 'tri-horario' && (
-            <div className="p-6 bg-muted/50 rounded-lg border border-border space-y-4">
-              <h3 className="font-body font-medium text-foreground">Consumo Tri-Horário</h3>
-              <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      kWh Vazio *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={numericDisplayValue('kwh_vazio', formData.kwh_vazio)}
-                      onChange={(e) => handleNumericChange('kwh_vazio', e.target.value)}
-                      onBlur={() => handleNumericBlur('kwh_vazio')}
-                      className={inputClass('kwh_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      Preço Vazio (€/kWh) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      min="0"
-                      value={numericDisplayValue('preco_vazio', formData.preco_vazio)}
-                      onChange={(e) => handleNumericChange('preco_vazio', e.target.value)}
-                      onBlur={() => handleNumericBlur('preco_vazio')}
-                      className={inputClass('preco_vazio', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      kWh Ponta *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={numericDisplayValue('kwh_ponta', formData.kwh_ponta)}
-                      onChange={(e) => handleNumericChange('kwh_ponta', e.target.value)}
-                      onBlur={() => handleNumericBlur('kwh_ponta')}
-                      className={inputClass('kwh_ponta', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      Preço Ponta (€/kWh) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      min="0"
-                      value={numericDisplayValue('preco_ponta', formData.preco_ponta)}
-                      onChange={(e) => handleNumericChange('preco_ponta', e.target.value)}
-                      onBlur={() => handleNumericBlur('preco_ponta')}
-                      className={inputClass('preco_ponta', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      kWh Cheias *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={numericDisplayValue('kwh_cheias', formData.kwh_cheias)}
-                      onChange={(e) => handleNumericChange('kwh_cheias', e.target.value)}
-                      onBlur={() => handleNumericBlur('kwh_cheias')}
-                      className={inputClass('kwh_cheias', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                  <div>
-                    <label className="font-body text-sm text-cream-muted mb-2 block">
-                      Preço Cheias (€/kWh) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      min="0"
-                      value={numericDisplayValue('preco_cheias', formData.preco_cheias)}
-                      onChange={(e) => handleNumericChange('preco_cheias', e.target.value)}
-                      onBlur={() => handleNumericBlur('preco_cheias')}
-                      className={inputClass('preco_cheias', 'w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50')}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="p-6 bg-muted/50 rounded-lg border border-border">
-            <h3 className="font-body font-medium text-foreground mb-4">Opções Adicionais</h3>
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.debito_direto}
-                  onChange={(e) => updateField('debito_direto', e.target.checked)}
-                  className="w-5 h-5 text-gold rounded focus:ring-gold"
-                />
-                <span className="font-body text-foreground">
-                  Aderir a Débito Direto (DD)
-                </span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.fatura_eletronica}
-                  onChange={(e) => updateField('fatura_eletronica', e.target.checked)}
-                  className="w-5 h-5 text-gold rounded focus:ring-gold"
-                />
-                <span className="font-body text-foreground">
-                  Aderir a Fatura Eletrónica (FE)
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="px-6 py-3 border border-border rounded-lg font-body text-cream-muted hover:text-foreground transition-all"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSimulate}
-              disabled={!formData.operadora_atual}
-              className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Simular Poupança
-            </button>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
