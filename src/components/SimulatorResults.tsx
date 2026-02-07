@@ -132,6 +132,23 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     return custoDiario + custoEnergia;
   };
 
+  const toNum = (val: unknown): number => Number(val) || 0;
+
+  const calcularDescontoPct = (desconto: ConfiguracaoDesconto, tipoPotencia: boolean): number => {
+    let pct = toNum(tipoPotencia ? desconto.desconto_base_potencia : desconto.desconto_base_energia);
+    if (simulacao.debito_direto && simulacao.fatura_eletronica) {
+      pct += toNum(tipoPotencia ? desconto.desconto_dd_fe_potencia : desconto.desconto_dd_fe_energia);
+    } else {
+      if (simulacao.debito_direto) {
+        pct += toNum(tipoPotencia ? desconto.desconto_dd_potencia : desconto.desconto_dd_energia);
+      }
+      if (simulacao.fatura_eletronica) {
+        pct += toNum(tipoPotencia ? desconto.desconto_fe_potencia : desconto.desconto_fe_energia);
+      }
+    }
+    return pct;
+  };
+
   const calcularCustoOperadora = (
     operadora: Operadora,
     descontos: ConfiguracaoDesconto[],
@@ -177,49 +194,42 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       }
 
       if (descontoEletricidade) {
-        let descontoPotencia = descontoEletricidade.desconto_base_potencia || 0;
-        let descontoEnergiaPct = descontoEletricidade.desconto_base_energia || 0;
+        const descontoPotenciaPct = calcularDescontoPct(descontoEletricidade, true);
+        const descontoEnergiaPct = calcularDescontoPct(descontoEletricidade, false);
 
-        if (simulacao.debito_direto && simulacao.fatura_eletronica) {
-          descontoPotencia += descontoEletricidade.desconto_dd_fe_potencia || 0;
-          descontoEnergiaPct += descontoEletricidade.desconto_dd_fe_energia || 0;
-        } else {
-          if (simulacao.debito_direto) {
-            descontoPotencia += descontoEletricidade.desconto_dd_potencia || 0;
-            descontoEnergiaPct += descontoEletricidade.desconto_dd_energia || 0;
-          }
-          if (simulacao.fatura_eletronica) {
-            descontoPotencia += descontoEletricidade.desconto_fe_potencia || 0;
-            descontoEnergiaPct += descontoEletricidade.desconto_fe_energia || 0;
-          }
-        }
-
-        custoPotencia = custoPotencia * (1 - descontoPotencia / 100);
+        custoPotencia = custoPotencia * (1 - descontoPotenciaPct / 100);
         custoEnergia = custoEnergia * (1 - descontoEnergiaPct / 100);
+
+        const fatorEnergia = 1 - descontoEnergiaPct / 100;
+        if (custosEnergia.simples !== undefined) custosEnergia.simples *= fatorEnergia;
+        if (custosEnergia.vazio !== undefined) custosEnergia.vazio *= fatorEnergia;
+        if (custosEnergia.fora_vazio !== undefined) custosEnergia.fora_vazio *= fatorEnergia;
+        if (custosEnergia.ponta !== undefined) custosEnergia.ponta *= fatorEnergia;
+        if (custosEnergia.cheias !== undefined) custosEnergia.cheias *= fatorEnergia;
       }
 
       subtotalEletricidade = custoPotencia + custoEnergia;
 
       if (descontoEletricidade && (!simulacao.debito_direto || !simulacao.fatura_eletronica)) {
-        const descontoPotenciaTotal = descontoEletricidade.desconto_dd_potencia + descontoEletricidade.desconto_fe_potencia;
-        const descontoEnergiaTotal = descontoEletricidade.desconto_dd_energia + descontoEletricidade.desconto_fe_energia;
+        const descontoPotenciaTotal = toNum(descontoEletricidade.desconto_dd_potencia) + toNum(descontoEletricidade.desconto_fe_potencia);
+        const descontoEnergiaTotal = toNum(descontoEletricidade.desconto_dd_energia) + toNum(descontoEletricidade.desconto_fe_energia);
 
         const custoPotenciaComDesconto = (valorPotenciaDiaria * simulacao.dias_fatura) * (1 - descontoPotenciaTotal / 100);
         let custoEnergiaBase = 0;
 
-        const tarifasCiclo = operadora.tarifas?.[simulacao.ciclo_horario];
-        if (tarifasCiclo) {
-          if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCiclo) {
-            custoEnergiaBase = (simulacao.kwh_simples || 0) * tarifasCiclo.valor_kwh;
-          } else if (simulacao.ciclo_horario === 'bi-horario' && 'valor_kwh_vazio' in tarifasCiclo) {
+        const tarifasCicloDD = operadora.tarifas?.[simulacao.ciclo_horario];
+        if (tarifasCicloDD) {
+          if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCicloDD) {
+            custoEnergiaBase = (simulacao.kwh_simples || 0) * tarifasCicloDD.valor_kwh;
+          } else if (simulacao.ciclo_horario === 'bi-horario' && 'valor_kwh_vazio' in tarifasCicloDD) {
             custoEnergiaBase =
-              (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio +
-              (simulacao.kwh_fora_vazio || 0) * tarifasCiclo.valor_kwh_fora_vazio;
-          } else if (simulacao.ciclo_horario === 'tri-horario' && 'valor_kwh_ponta' in tarifasCiclo) {
+              (simulacao.kwh_vazio || 0) * tarifasCicloDD.valor_kwh_vazio +
+              (simulacao.kwh_fora_vazio || 0) * tarifasCicloDD.valor_kwh_fora_vazio;
+          } else if (simulacao.ciclo_horario === 'tri-horario' && 'valor_kwh_ponta' in tarifasCicloDD) {
             custoEnergiaBase =
-              (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio +
-              (simulacao.kwh_ponta || 0) * tarifasCiclo.valor_kwh_ponta +
-              (simulacao.kwh_cheias || 0) * tarifasCiclo.valor_kwh_cheias;
+              (simulacao.kwh_vazio || 0) * tarifasCicloDD.valor_kwh_vazio +
+              (simulacao.kwh_ponta || 0) * tarifasCicloDD.valor_kwh_ponta +
+              (simulacao.kwh_cheias || 0) * tarifasCicloDD.valor_kwh_cheias;
           }
         }
 
@@ -233,35 +243,24 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     let gasValorDiario = 0;
     let gasCustoTotalDiario = 0;
     let gasCustoEnergia = 0;
+    let gasPrecoKwh = 0;
 
     if (simulacao.tipo_simulacao === 'gas' || simulacao.tipo_simulacao === 'dual') {
       const tarifasGas = operadora.tarifas?.gas;
       if (!tarifasGas) return null;
 
       const escalaoKey = simulacao.gas_escalao?.toString() || '1';
-      gasValorDiario = tarifasGas.escaloes[escalaoKey] || 0;
+      const escalaoData = tarifasGas.escaloes?.[escalaoKey];
+      gasValorDiario = escalaoData?.valor_diario || 0;
+      gasPrecoKwh = escalaoData?.valor_kwh || 0;
       gasCustoTotalDiario = gasValorDiario * simulacao.dias_fatura;
-      gasCustoEnergia = (simulacao.gas_kwh || 0) * tarifasGas.valor_kwh;
+      gasCustoEnergia = (simulacao.gas_kwh || 0) * gasPrecoKwh;
 
       if (descontoGas) {
-        let descontoDiario = descontoGas.desconto_base_potencia || 0;
-        let descontoEnergiaPct = descontoGas.desconto_base_energia || 0;
+        const descontoDiarioPct = calcularDescontoPct(descontoGas, true);
+        const descontoEnergiaPct = calcularDescontoPct(descontoGas, false);
 
-        if (simulacao.debito_direto && simulacao.fatura_eletronica) {
-          descontoDiario += descontoGas.desconto_dd_fe_potencia || 0;
-          descontoEnergiaPct += descontoGas.desconto_dd_fe_energia || 0;
-        } else {
-          if (simulacao.debito_direto) {
-            descontoDiario += descontoGas.desconto_dd_potencia || 0;
-            descontoEnergiaPct += descontoGas.desconto_dd_energia || 0;
-          }
-          if (simulacao.fatura_eletronica) {
-            descontoDiario += descontoGas.desconto_fe_potencia || 0;
-            descontoEnergiaPct += descontoGas.desconto_fe_energia || 0;
-          }
-        }
-
-        gasCustoTotalDiario = gasCustoTotalDiario * (1 - descontoDiario / 100);
+        gasCustoTotalDiario = gasCustoTotalDiario * (1 - descontoDiarioPct / 100);
         gasCustoEnergia = gasCustoEnergia * (1 - descontoEnergiaPct / 100);
       }
 
@@ -271,30 +270,39 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     const subtotal = subtotalEletricidade + subtotalGas;
     const poupanca = custoAtualFatura - subtotal;
 
-    const descontoAplicavel = descontoEletricidade || descontoGas;
+    let totalDescontoMensal = 0;
+    let maxDuracaoMeses = 0;
+    let requerDDTemp = false;
+    let requerFETemp = false;
+    const descricoes: string[] = [];
+
+    [descontoEletricidade, descontoGas].forEach((d) => {
+      if (d && toNum(d.desconto_mensal_temporario) > 0 && d.duracao_meses_desconto > 0) {
+        totalDescontoMensal += toNum(d.desconto_mensal_temporario);
+        maxDuracaoMeses = Math.max(maxDuracaoMeses, d.duracao_meses_desconto);
+        if (d.descricao_desconto_temporario) descricoes.push(d.descricao_desconto_temporario);
+        if (d.desconto_temp_requer_dd) requerDDTemp = true;
+        if (d.desconto_temp_requer_fe) requerFETemp = true;
+      }
+    });
+
     let descontoTemporario: ResultadoComparacao['desconto_temporario'];
-    if (descontoAplicavel && descontoAplicavel.desconto_mensal_temporario > 0 && descontoAplicavel.duracao_meses_desconto > 0) {
-      const requerDD = descontoAplicavel.desconto_temp_requer_dd || false;
-      const requerFE = descontoAplicavel.desconto_temp_requer_fe || false;
-
-      const clienteTemDD = simulacao.debito_direto;
-      const clienteTemFE = simulacao.fatura_eletronica;
-
-      const disponivel = (!requerDD || clienteTemDD) && (!requerFE || clienteTemFE);
+    if (totalDescontoMensal > 0 && maxDuracaoMeses > 0) {
+      const disponivel = (!requerDDTemp || simulacao.debito_direto) && (!requerFETemp || simulacao.fatura_eletronica);
 
       const custoMensalBase = (subtotal / simulacao.dias_fatura) * 30;
-      const custoMensalComDesconto = custoMensalBase - descontoAplicavel.desconto_mensal_temporario;
-      const poupancaPeriodoDesconto = descontoAplicavel.desconto_mensal_temporario * descontoAplicavel.duracao_meses_desconto;
+      const custoMensalComDesconto = custoMensalBase - totalDescontoMensal;
+      const poupancaPeriodoDesconto = totalDescontoMensal * maxDuracaoMeses;
 
       descontoTemporario = {
-        valor_mensal: descontoAplicavel.desconto_mensal_temporario,
-        duracao_meses: descontoAplicavel.duracao_meses_desconto,
-        descricao: descontoAplicavel.descricao_desconto_temporario,
+        valor_mensal: totalDescontoMensal,
+        duracao_meses: maxDuracaoMeses,
+        descricao: descricoes.length > 0 ? descricoes.join(' + ') : null,
         poupanca_periodo_desconto: poupancaPeriodoDesconto,
         custo_mensal_com_desconto: custoMensalComDesconto,
         custo_mensal_apos_desconto: custoMensalBase,
-        requer_dd: requerDD,
-        requer_fe: requerFE,
+        requer_dd: requerDDTemp,
+        requer_fe: requerFETemp,
         disponivel: disponivel,
       };
     }
@@ -314,6 +322,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       gas_valor_diario: simulacao.tipo_simulacao !== 'eletricidade' ? gasValorDiario : undefined,
       gas_custo_total_diario: simulacao.tipo_simulacao !== 'eletricidade' ? gasCustoTotalDiario : undefined,
       gas_custo_energia: simulacao.tipo_simulacao !== 'eletricidade' ? gasCustoEnergia : undefined,
+      gas_preco_kwh: simulacao.tipo_simulacao !== 'eletricidade' ? gasPrecoKwh : undefined,
     };
   };
 
@@ -921,20 +930,16 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.gas_preco_kwh || 0, 6)}
                       </td>
-                      {resultados.map((r) => {
-                        const tarifasGas = r.operadora.tarifas?.gas;
-                        const valorKwh = tarifasGas?.valor_kwh || 0;
-                        return (
-                          <td
-                            key={r.operadora.id}
-                            className={`p-3 text-center font-body text-foreground border border-border ${
-                              r === melhorResultado ? 'bg-gold/10' : ''
-                            }`}
-                          >
-                            {formatCurrency(valorKwh, 6)}
-                          </td>
-                        );
-                      })}
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className={`p-3 text-center font-body text-foreground border border-border ${
+                            r === melhorResultado ? 'bg-gold/10' : ''
+                          }`}
+                        >
+                          {formatCurrency(r.gas_preco_kwh || 0, 6)}
+                        </td>
+                      ))}
                     </tr>
                     <tr>
                       <td className="p-3 font-body text-cream-muted border border-border">

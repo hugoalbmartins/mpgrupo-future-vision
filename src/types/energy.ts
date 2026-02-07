@@ -131,6 +131,7 @@ export interface ResultadoComparacao {
   gas_valor_diario?: number;
   gas_custo_total_diario?: number;
   gas_custo_energia?: number;
+  gas_preco_kwh?: number;
 }
 
 export const POTENCIAS_DISPONIVEIS = [
