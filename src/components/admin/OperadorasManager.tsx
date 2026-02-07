@@ -22,9 +22,10 @@ const OperadorasManager = () => {
     ativa: true,
   });
 
+  const [tiposEnergia, setTiposEnergia] = useState<('eletricidade' | 'gas')[]>([]);
   const [ciclosDisponiveis, setCiclosDisponiveis] = useState<CicloHorario[]>([]);
   const [tarifas, setTarifas] = useState<TarifasOperadora>({});
-  const [activeTab, setActiveTab] = useState<CicloHorario>('simples');
+  const [activeTab, setActiveTab] = useState<CicloHorario | 'gas'>('simples');
 
   useEffect(() => {
     loadOperadoras();
@@ -111,9 +112,16 @@ const OperadorasManager = () => {
         logotipo_url: operadora.logotipo_url || '',
         ativa: operadora.ativa,
       });
+      setTiposEnergia(operadora.tipos_energia || []);
       setCiclosDisponiveis(operadora.ciclos_disponiveis || []);
       setTarifas(operadora.tarifas || {});
-      setActiveTab(operadora.ciclos_disponiveis?.[0] || 'simples');
+
+      if (operadora.tipos_energia?.includes('gas') && !operadora.tipos_energia?.includes('eletricidade')) {
+        setActiveTab('gas');
+      } else {
+        setActiveTab(operadora.ciclos_disponiveis?.[0] || 'simples');
+      }
+
       if (operadora.logotipo_url) {
         setLogoPreview(operadora.logotipo_url);
       }
@@ -124,11 +132,44 @@ const OperadorasManager = () => {
         logotipo_url: '',
         ativa: true,
       });
+      setTiposEnergia([]);
       setCiclosDisponiveis([]);
       setTarifas({});
       setActiveTab('simples');
     }
     setShowDialog(true);
+  };
+
+  const handleTipoEnergiaToggle = (tipo: 'eletricidade' | 'gas') => {
+    if (tiposEnergia.includes(tipo)) {
+      setTiposEnergia(tiposEnergia.filter(t => t !== tipo));
+      if (tipo === 'eletricidade') {
+        setCiclosDisponiveis([]);
+        const newTarifas = { ...tarifas };
+        delete newTarifas.simples;
+        delete newTarifas['bi-horario'];
+        delete newTarifas['tri-horario'];
+        setTarifas(newTarifas);
+      } else {
+        const newTarifas = { ...tarifas };
+        delete newTarifas.gas;
+        setTarifas(newTarifas);
+      }
+    } else {
+      setTiposEnergia([...tiposEnergia, tipo]);
+      if (tipo === 'gas' && !tarifas.gas) {
+        setTarifas({
+          ...tarifas,
+          gas: {
+            escaloes: { '1': 0, '2': 0, '3': 0, '4': 0 },
+            valor_kwh: 0
+          }
+        });
+        if (tiposEnergia.length === 0) {
+          setActiveTab('gas');
+        }
+      }
+    }
   };
 
   const handleCicloToggle = (ciclo: CicloHorario) => {
@@ -164,8 +205,13 @@ const OperadorasManager = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (ciclosDisponiveis.length === 0) {
-      toast.error('Selecione pelo menos um ciclo horário');
+    if (tiposEnergia.length === 0) {
+      toast.error('Selecione pelo menos um tipo de energia');
+      return;
+    }
+
+    if (tiposEnergia.includes('eletricidade') && ciclosDisponiveis.length === 0) {
+      toast.error('Selecione pelo menos um ciclo horário para eletricidade');
       return;
     }
 
@@ -192,6 +238,7 @@ const OperadorasManager = () => {
       const dataToSubmit = {
         ...formData,
         logotipo_url: logoUrl,
+        tipos_energia: tiposEnergia,
         ciclos_disponiveis: ciclosDisponiveis,
         tarifas: tarifas,
       };
@@ -279,8 +326,13 @@ const OperadorasManager = () => {
                 <div>
                   <h3 className="font-body font-medium text-foreground">{operadora.nome}</h3>
                   <p className="text-sm text-cream-muted">
-                    {operadora.ativa ? 'Ativa' : 'Inativa'} • Ciclos: {operadora.ciclos_disponiveis?.join(', ') || 'Nenhum'}
+                    {operadora.ativa ? 'Ativa' : 'Inativa'} • {operadora.tipos_energia?.map(t => t === 'eletricidade' ? 'Eletricidade' : 'Gás').join(' + ') || 'Sem energias'}
                   </p>
+                  {operadora.tipos_energia?.includes('eletricidade') && (
+                    <p className="text-xs text-cream-muted">
+                      Ciclos: {operadora.ciclos_disponiveis?.join(', ') || 'Nenhum'}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -349,45 +401,75 @@ const OperadorasManager = () => {
 
             <div>
               <label className="font-body text-sm text-cream-muted mb-3 block">
-                Ciclos Horários Disponíveis *
+                Tipos de Energia *
               </label>
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="ciclo-simples"
-                    checked={ciclosDisponiveis.includes('simples')}
-                    onCheckedChange={() => handleCicloToggle('simples')}
+                    id="tipo-eletricidade"
+                    checked={tiposEnergia.includes('eletricidade')}
+                    onCheckedChange={() => handleTipoEnergiaToggle('eletricidade')}
                   />
-                  <label htmlFor="ciclo-simples" className="font-body text-sm cursor-pointer">
-                    Simples
+                  <label htmlFor="tipo-eletricidade" className="font-body text-sm cursor-pointer">
+                    Eletricidade
                   </label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="ciclo-bi"
-                    checked={ciclosDisponiveis.includes('bi-horario')}
-                    onCheckedChange={() => handleCicloToggle('bi-horario')}
+                    id="tipo-gas"
+                    checked={tiposEnergia.includes('gas')}
+                    onCheckedChange={() => handleTipoEnergiaToggle('gas')}
                   />
-                  <label htmlFor="ciclo-bi" className="font-body text-sm cursor-pointer">
-                    Bi-horário
-                  </label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="ciclo-tri"
-                    checked={ciclosDisponiveis.includes('tri-horario')}
-                    onCheckedChange={() => handleCicloToggle('tri-horario')}
-                  />
-                  <label htmlFor="ciclo-tri" className="font-body text-sm cursor-pointer">
-                    Tri-horário
+                  <label htmlFor="tipo-gas" className="font-body text-sm cursor-pointer">
+                    Gás Natural
                   </label>
                 </div>
               </div>
             </div>
 
-            {ciclosDisponiveis.length > 0 && (
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CicloHorario)}>
-                <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${ciclosDisponiveis.length}, 1fr)` }}>
+            {tiposEnergia.includes('eletricidade') && (
+              <div>
+                <label className="font-body text-sm text-cream-muted mb-3 block">
+                  Ciclos Horários Disponíveis *
+                </label>
+                <div className="flex gap-6">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="ciclo-simples"
+                      checked={ciclosDisponiveis.includes('simples')}
+                      onCheckedChange={() => handleCicloToggle('simples')}
+                    />
+                    <label htmlFor="ciclo-simples" className="font-body text-sm cursor-pointer">
+                      Simples
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="ciclo-bi"
+                      checked={ciclosDisponiveis.includes('bi-horario')}
+                      onCheckedChange={() => handleCicloToggle('bi-horario')}
+                    />
+                    <label htmlFor="ciclo-bi" className="font-body text-sm cursor-pointer">
+                      Bi-horário
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="ciclo-tri"
+                      checked={ciclosDisponiveis.includes('tri-horario')}
+                      onCheckedChange={() => handleCicloToggle('tri-horario')}
+                    />
+                    <label htmlFor="ciclo-tri" className="font-body text-sm cursor-pointer">
+                      Tri-horário
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(ciclosDisponiveis.length > 0 || tiposEnergia.includes('gas')) && (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CicloHorario | 'gas')}>
+                <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${ciclosDisponiveis.length + (tiposEnergia.includes('gas') ? 1 : 0)}, 1fr)` }}>
                   {ciclosDisponiveis.includes('simples') && (
                     <TabsTrigger value="simples">Simples</TabsTrigger>
                   )}
@@ -396,6 +478,9 @@ const OperadorasManager = () => {
                   )}
                   {ciclosDisponiveis.includes('tri-horario') && (
                     <TabsTrigger value="tri-horario">Tri-horário</TabsTrigger>
+                  )}
+                  {tiposEnergia.includes('gas') && (
+                    <TabsTrigger value="gas">Gás Natural</TabsTrigger>
                   )}
                 </TabsList>
 
@@ -615,6 +700,60 @@ const OperadorasManager = () => {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  </TabsContent>
+                )}
+
+                {tiposEnergia.includes('gas') && (
+                  <TabsContent value="gas" className="space-y-4">
+                    <div>
+                      <h4 className="font-body font-medium text-foreground mb-3">
+                        Valor Diário por Escalão (€/dia)
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {['1', '2', '3', '4'].map((escalao) => (
+                          <div key={escalao}>
+                            <label className="font-body text-sm text-cream-muted mb-2 block">
+                              Escalão {escalao}
+                            </label>
+                            <input
+                              type="number"
+                              step="0.000001"
+                              value={tarifas.gas?.escaloes?.[escalao] || 0}
+                              onChange={(e) => setTarifas({
+                                ...tarifas,
+                                gas: {
+                                  ...tarifas.gas!,
+                                  escaloes: {
+                                    ...tarifas.gas!.escaloes,
+                                    [escalao]: parseFloat(e.target.value) || 0
+                                  }
+                                }
+                              })}
+                              className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-body text-sm text-cream-muted mb-2 block">
+                        Valor kWh Gás (€/kWh)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={tarifas.gas?.valor_kwh || 0}
+                        onChange={(e) => setTarifas({
+                          ...tarifas,
+                          gas: {
+                            ...tarifas.gas!,
+                            valor_kwh: parseFloat(e.target.value) || 0
+                          }
+                        })}
+                        className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      />
                     </div>
                   </TabsContent>
                 )}
