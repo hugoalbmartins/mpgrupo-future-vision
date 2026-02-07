@@ -161,20 +161,20 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
   const validateGasForm = (): boolean => {
     const errors = new Set<string>();
 
-    if (!formData.escalao_gas) {
-      errors.add('escalao_gas');
+    if (!formData.gas_escalao) {
+      errors.add('gas_escalao');
     }
 
-    if (!formData.gas_valor_escalao_diario_atual || formData.gas_valor_escalao_diario_atual === 0) {
-      errors.add('gas_valor_escalao_diario_atual');
+    if (!formData.gas_valor_diario_atual || formData.gas_valor_diario_atual === 0) {
+      errors.add('gas_valor_diario_atual');
     }
 
-    if (!formData.gas_kwh_consumidos || formData.gas_kwh_consumidos === 0) {
-      errors.add('gas_kwh_consumidos');
+    if (!formData.gas_kwh || formData.gas_kwh === 0) {
+      errors.add('gas_kwh');
     }
 
-    if (!formData.gas_preco_kwh_atual || formData.gas_preco_kwh_atual === 0) {
-      errors.add('gas_preco_kwh_atual');
+    if (!formData.gas_preco_kwh || formData.gas_preco_kwh === 0) {
+      errors.add('gas_preco_kwh');
     }
 
     setFieldErrors(errors);

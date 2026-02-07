@@ -14,31 +14,22 @@ const SimulatorTypeSelection = ({ onSelect, availableEnergies }: SimulatorTypeSe
     {
       id: 'eletricidade' as TipoSimulacao,
       title: 'Eletricidade',
-      description: 'Simular poupança apenas em eletricidade',
+      description: 'Compare tarifas e descubra a melhor opção para eletricidade',
       icon: Zap,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10',
-      borderColor: 'border-yellow-500',
       available: availableEnergies.hasElectricidade,
     },
     {
       id: 'gas' as TipoSimulacao,
-      title: 'Gás',
-      description: 'Simular poupança apenas em gás natural',
+      title: 'Gás Natural',
+      description: 'Encontre as tarifas mais competitivas para gás natural',
       icon: Flame,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
-      borderColor: 'border-orange-500',
       available: availableEnergies.hasGas,
     },
     {
       id: 'dual' as TipoSimulacao,
-      title: 'Dual (Eletricidade + Gás)',
-      description: 'Simular poupança em eletricidade e gás',
+      title: 'Eletricidade + Gás',
+      description: 'Maximize a poupança combinando ambas as energias',
       icon: Layers,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
-      borderColor: 'border-green-500',
       available: availableEnergies.hasElectricidade && availableEnergies.hasGas,
     },
   ];
@@ -46,25 +37,31 @@ const SimulatorTypeSelection = ({ onSelect, availableEnergies }: SimulatorTypeSe
   const types = allTypes.filter(type => type.available);
 
   return (
-    <div className="grid md:grid-cols-3 gap-6 py-6">
+    <div className="space-y-3 py-4">
       {types.map((type) => {
         const Icon = type.icon;
         return (
           <button
             key={type.id}
             onClick={() => onSelect(type.id)}
-            className={`p-6 rounded-lg border-2 ${type.borderColor} ${type.bgColor} hover:shadow-lg transition-all group`}
+            className="w-full p-6 rounded-lg border border-border bg-card hover:bg-muted/50 hover:border-gold/50 transition-all duration-300 group text-left"
           >
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className={`p-4 rounded-full bg-background ${type.color}`}>
-                <Icon className="w-8 h-8" />
+            <div className="flex items-center gap-6">
+              <div className="shrink-0 w-14 h-14 rounded-full bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
+                <Icon className="w-7 h-7 text-gold" />
               </div>
-              <div>
-                <h3 className="font-body font-bold text-lg text-foreground mb-2">{type.title}</h3>
-                <p className="font-body text-sm text-cream-muted">{type.description}</p>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-body font-semibold text-lg text-foreground mb-1 group-hover:text-gold transition-colors">
+                  {type.title}
+                </h3>
+                <p className="font-body text-sm text-cream-muted leading-relaxed">
+                  {type.description}
+                </p>
               </div>
-              <div className="mt-2 px-4 py-2 bg-gold text-primary-foreground rounded-lg font-body font-medium group-hover:bg-gold-light transition-all">
-                Selecionar
+              <div className="shrink-0 text-cream-muted group-hover:text-gold transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
             </div>
           </button>

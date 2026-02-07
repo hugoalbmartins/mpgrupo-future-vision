@@ -162,10 +162,10 @@ const OperadorasManager = () => {
           ...tarifas,
           gas: {
             escaloes: {
-              '1': { valor_diario: 0, valor_kwh: 0 },
-              '2': { valor_diario: 0, valor_kwh: 0 },
-              '3': { valor_diario: 0, valor_kwh: 0 },
-              '4': { valor_diario: 0, valor_kwh: 0 }
+              '1': { valor_diario: '' as any, valor_kwh: '' as any },
+              '2': { valor_diario: '' as any, valor_kwh: '' as any },
+              '3': { valor_diario: '' as any, valor_kwh: '' as any },
+              '4': { valor_diario: '' as any, valor_kwh: '' as any }
             }
           }
         });
@@ -728,7 +728,7 @@ const OperadorasManager = () => {
                                 <input
                                   type="number"
                                   step="0.000001"
-                                  value={tarifas.gas?.escaloes?.[escalao]?.valor_diario || 0}
+                                  value={tarifas.gas?.escaloes?.[escalao]?.valor_diario ?? ''}
                                   onChange={(e) => setTarifas({
                                     ...tarifas,
                                     gas: {
@@ -737,12 +737,13 @@ const OperadorasManager = () => {
                                         ...tarifas.gas!.escaloes,
                                         [escalao]: {
                                           ...tarifas.gas!.escaloes[escalao],
-                                          valor_diario: parseFloat(e.target.value) || 0
+                                          valor_diario: e.target.value === '' ? '' as any : parseFloat(e.target.value)
                                         }
                                       }
                                     }
                                   })}
                                   className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                                  placeholder="0.000000"
                                 />
                               </div>
                               <div>
@@ -752,7 +753,7 @@ const OperadorasManager = () => {
                                 <input
                                   type="number"
                                   step="0.000001"
-                                  value={tarifas.gas?.escaloes?.[escalao]?.valor_kwh || 0}
+                                  value={tarifas.gas?.escaloes?.[escalao]?.valor_kwh ?? ''}
                                   onChange={(e) => setTarifas({
                                     ...tarifas,
                                     gas: {
@@ -761,12 +762,13 @@ const OperadorasManager = () => {
                                         ...tarifas.gas!.escaloes,
                                         [escalao]: {
                                           ...tarifas.gas!.escaloes[escalao],
-                                          valor_kwh: parseFloat(e.target.value) || 0
+                                          valor_kwh: e.target.value === '' ? '' as any : parseFloat(e.target.value)
                                         }
                                       }
                                     }
                                   })}
                                   className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                                  placeholder="0.000000"
                                 />
                               </div>
                             </div>
