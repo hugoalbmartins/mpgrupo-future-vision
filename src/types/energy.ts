@@ -20,9 +20,13 @@ export interface TarifaTriHorario {
   valor_diario_potencias: Record<string, number>;
 }
 
-export interface GasTarifa {
-  escaloes: Record<string, number>;
+export interface GasEscalao {
+  valor_diario: number;
   valor_kwh: number;
+}
+
+export interface GasTarifa {
+  escaloes: Record<string, GasEscalao>;
 }
 
 export interface TarifasOperadora {

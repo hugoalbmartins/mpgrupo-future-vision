@@ -161,8 +161,12 @@ const OperadorasManager = () => {
         setTarifas({
           ...tarifas,
           gas: {
-            escaloes: { '1': 0, '2': 0, '3': 0, '4': 0 },
-            valor_kwh: 0
+            escaloes: {
+              '1': { valor_diario: 0, valor_kwh: 0 },
+              '2': { valor_diario: 0, valor_kwh: 0 },
+              '3': { valor_diario: 0, valor_kwh: 0 },
+              '4': { valor_diario: 0, valor_kwh: 0 }
+            }
           }
         });
         if (tiposEnergia.length === 0) {
@@ -708,52 +712,67 @@ const OperadorasManager = () => {
                   <TabsContent value="gas" className="space-y-4">
                     <div>
                       <h4 className="font-body font-medium text-foreground mb-3">
-                        Valor Diário por Escalão (€/dia)
+                        Configuração de Tarifas de Gás por Escalão
                       </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid gap-4">
                         {['1', '2', '3', '4'].map((escalao) => (
-                          <div key={escalao}>
-                            <label className="font-body text-sm text-cream-muted mb-2 block">
+                          <div key={escalao} className="p-4 bg-muted/50 rounded-lg border border-border">
+                            <h5 className="font-body font-medium text-foreground mb-3">
                               Escalão {escalao}
-                            </label>
-                            <input
-                              type="number"
-                              step="0.000001"
-                              value={tarifas.gas?.escaloes?.[escalao] || 0}
-                              onChange={(e) => setTarifas({
-                                ...tarifas,
-                                gas: {
-                                  ...tarifas.gas!,
-                                  escaloes: {
-                                    ...tarifas.gas!.escaloes,
-                                    [escalao]: parseFloat(e.target.value) || 0
-                                  }
-                                }
-                              })}
-                              className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-                            />
+                            </h5>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="font-body text-sm text-cream-muted mb-2 block">
+                                  Valor Diário (€/dia)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.000001"
+                                  value={tarifas.gas?.escaloes?.[escalao]?.valor_diario || 0}
+                                  onChange={(e) => setTarifas({
+                                    ...tarifas,
+                                    gas: {
+                                      ...tarifas.gas!,
+                                      escaloes: {
+                                        ...tarifas.gas!.escaloes,
+                                        [escalao]: {
+                                          ...tarifas.gas!.escaloes[escalao],
+                                          valor_diario: parseFloat(e.target.value) || 0
+                                        }
+                                      }
+                                    }
+                                  })}
+                                  className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                                />
+                              </div>
+                              <div>
+                                <label className="font-body text-sm text-cream-muted mb-2 block">
+                                  Valor kWh (€/kWh)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.000001"
+                                  value={tarifas.gas?.escaloes?.[escalao]?.valor_kwh || 0}
+                                  onChange={(e) => setTarifas({
+                                    ...tarifas,
+                                    gas: {
+                                      ...tarifas.gas!,
+                                      escaloes: {
+                                        ...tarifas.gas!.escaloes,
+                                        [escalao]: {
+                                          ...tarifas.gas!.escaloes[escalao],
+                                          valor_kwh: parseFloat(e.target.value) || 0
+                                        }
+                                      }
+                                    }
+                                  })}
+                                  className="w-full px-4 py-2 bg-background border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
+                                />
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="font-body text-sm text-cream-muted mb-2 block">
-                        Valor kWh Gás (€/kWh)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.000001"
-                        value={tarifas.gas?.valor_kwh || 0}
-                        onChange={(e) => setTarifas({
-                          ...tarifas,
-                          gas: {
-                            ...tarifas.gas!,
-                            valor_kwh: parseFloat(e.target.value) || 0
-                          }
-                        })}
-                        className="w-full px-4 py-2 bg-muted border border-border rounded-lg font-body text-foreground focus:outline-none focus:ring-2 focus:ring-gold/50"
-                      />
                     </div>
                   </TabsContent>
                 )}
