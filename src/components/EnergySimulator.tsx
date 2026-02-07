@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulacaoInput, TipoSimulacao } from '@/types/energy';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 import SimulatorResults from './SimulatorResults';
 import SimulatorTypeSelection from './simulator/SimulatorTypeSelection';
 import SimulatorElectricityForm from './simulator/SimulatorElectricityForm';
 import SimulatorGasForm from './simulator/SimulatorGasForm';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface EnergySimulatorProps {
   open: boolean;
@@ -17,6 +19,11 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
   const [step, setStep] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
+  const [availableEnergies, setAvailableEnergies] = useState<{
+    hasElectricidade: boolean;
+    hasGas: boolean;
+  } | null>(null);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(true);
 
   const [formData, setFormData] = useState<SimulacaoInput>({
     tipo_simulacao: undefined,
@@ -66,6 +73,53 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
 
   const inputClass = (field: string, base: string) =>
     `${base} ${fieldErrors.has(field) ? 'border-red-500 ring-1 ring-red-500' : ''}`;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const checkAvailableEnergies = async () => {
+      try {
+        setIsCheckingAvailability(true);
+
+        const { data: operadoras, error } = await supabase
+          .from('operadoras')
+          .select('tipos_energia')
+          .eq('ativo', true);
+
+        if (error) {
+          console.error('Erro ao verificar operadoras:', error);
+          setAvailableEnergies({ hasElectricidade: true, hasGas: true });
+          setIsCheckingAvailability(false);
+          return;
+        }
+
+        const hasElectricidade = operadoras?.some(op =>
+          op.tipos_energia?.includes('eletricidade')
+        ) ?? false;
+
+        const hasGas = operadoras?.some(op =>
+          op.tipos_energia?.includes('gas')
+        ) ?? false;
+
+        setAvailableEnergies({ hasElectricidade, hasGas });
+
+        if (!hasElectricidade && hasGas) {
+          updateField('tipo_simulacao', 'gas');
+          setStep(1);
+        } else if (hasElectricidade && !hasGas) {
+          updateField('tipo_simulacao', 'eletricidade');
+          setStep(1);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar operadoras:', err);
+        setAvailableEnergies({ hasElectricidade: true, hasGas: true });
+      } finally {
+        setIsCheckingAvailability(false);
+      }
+    };
+
+    checkAvailableEnergies();
+  }, [open]);
 
   const validateElectricityForm = (): boolean => {
     const errors = new Set<string>();
@@ -159,6 +213,15 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
 
   const handleBack = () => {
     if (step > 0) {
+      const onlyOneEnergyAvailable = availableEnergies &&
+        ((availableEnergies.hasElectricidade && !availableEnergies.hasGas) ||
+         (!availableEnergies.hasElectricidade && availableEnergies.hasGas));
+
+      if (step === 1 && onlyOneEnergyAvailable) {
+        onOpenChange(false);
+        return;
+      }
+
       setStep(step - 1);
       setFieldErrors(new Set());
     }
@@ -169,6 +232,8 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
     setStep(0);
     setFieldErrors(new Set());
     setRawInputs({});
+    setAvailableEnergies(null);
+    setIsCheckingAvailability(true);
     setFormData({
       tipo_simulacao: undefined,
       operadora_atual: '',
@@ -181,6 +246,20 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
       debito_direto: false,
       fatura_eletronica: false,
     });
+  };
+
+  const getUnavailableEnergyMessage = () => {
+    if (!availableEnergies) return null;
+
+    if (availableEnergies.hasElectricidade && !availableEnergies.hasGas) {
+      return 'Estamos a trabalhar para trazer ao utilizador também simulação de gás natural.';
+    }
+
+    if (!availableEnergies.hasElectricidade && availableEnergies.hasGas) {
+      return 'Estamos a trabalhar para trazer ao utilizador também simulação de eletricidade.';
+    }
+
+    return null;
   };
 
   if (showResults) {
@@ -227,103 +306,131 @@ const EnergySimulator = ({ open, onOpenChange }: EnergySimulatorProps) => {
         </DialogHeader>
 
         <div className="space-y-6 pt-6">
-          {step > 0 && (
-            <button
-              onClick={handleBack}
-              className="flex items-center gap-2 text-cream-muted hover:text-gold transition-colors font-body"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Voltar
-            </button>
-          )}
-
-          {step === 0 && (
-            <SimulatorTypeSelection onSelect={handleTypeSelection} />
-          )}
-
-          {step === 1 && formData.tipo_simulacao === 'gas' && (
-            <SimulatorGasForm
-              formData={formData}
-              updateField={updateField}
-              numericDisplayValue={numericDisplayValue}
-              handleNumericChange={handleNumericChange}
-              handleNumericBlur={handleNumericBlur}
-              fieldErrors={fieldErrors}
-              inputClass={inputClass}
-            />
-          )}
-
-          {step === 1 && (formData.tipo_simulacao === 'eletricidade' || formData.tipo_simulacao === 'dual') && (
-            <SimulatorElectricityForm
-              formData={formData}
-              updateField={updateField}
-              numericDisplayValue={numericDisplayValue}
-              handleNumericChange={handleNumericChange}
-              handleNumericBlur={handleNumericBlur}
-              fieldErrors={fieldErrors}
-              inputClass={inputClass}
-              showCommonFields={showCommonFields}
-            />
-          )}
-
-          {step === 2 && formData.tipo_simulacao === 'dual' && (
-            <SimulatorGasForm
-              formData={formData}
-              updateField={updateField}
-              numericDisplayValue={numericDisplayValue}
-              handleNumericChange={handleNumericChange}
-              handleNumericBlur={handleNumericBlur}
-              fieldErrors={fieldErrors}
-              inputClass={inputClass}
-            />
-          )}
-
-          {step > 0 && (
-            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border">
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="px-6 py-3 border border-border rounded-lg font-body text-cream-muted hover:text-foreground transition-all"
-              >
-                Cancelar
-              </button>
-              {(step === 1 && formData.tipo_simulacao === 'gas') && (
-                <button
-                  type="button"
-                  onClick={handleNextFromGas}
-                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
-                >
-                  Simular Poupança
-                </button>
-              )}
-              {(step === 1 && formData.tipo_simulacao === 'eletricidade') && (
-                <button
-                  type="button"
-                  onClick={handleNextFromElectricity}
-                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
-                >
-                  Simular Poupança
-                </button>
-              )}
-              {(step === 1 && formData.tipo_simulacao === 'dual') && (
-                <button
-                  type="button"
-                  onClick={handleNextFromElectricity}
-                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
-                >
-                  Seguinte
-                </button>
-              )}
-              {(step === 2 && formData.tipo_simulacao === 'dual') && (
-                <button
-                  type="button"
-                  onClick={handleNextFromGas}
-                  className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
-                >
-                  Simular Poupança
-                </button>
-              )}
+          {isCheckingAvailability ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center space-y-4">
+                <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="font-body text-cream-muted">A verificar operadoras disponíveis...</p>
+              </div>
             </div>
+          ) : (
+            <>
+              {getUnavailableEnergyMessage() && step === 1 && (
+                <Alert className="bg-blue-500/10 border-blue-500">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  <AlertDescription className="font-body text-sm">
+                    {getUnavailableEnergyMessage()}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {step > 0 && !(
+                step === 1 &&
+                availableEnergies &&
+                ((availableEnergies.hasElectricidade && !availableEnergies.hasGas) ||
+                 (!availableEnergies.hasElectricidade && availableEnergies.hasGas))
+              ) && (
+                <button
+                  onClick={handleBack}
+                  className="flex items-center gap-2 text-cream-muted hover:text-gold transition-colors font-body"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Voltar
+                </button>
+              )}
+
+              {step === 0 && availableEnergies && (
+                <SimulatorTypeSelection
+                  onSelect={handleTypeSelection}
+                  availableEnergies={availableEnergies}
+                />
+              )}
+
+              {step === 1 && formData.tipo_simulacao === 'gas' && (
+                <SimulatorGasForm
+                  formData={formData}
+                  updateField={updateField}
+                  numericDisplayValue={numericDisplayValue}
+                  handleNumericChange={handleNumericChange}
+                  handleNumericBlur={handleNumericBlur}
+                  fieldErrors={fieldErrors}
+                  inputClass={inputClass}
+                />
+              )}
+
+              {step === 1 && (formData.tipo_simulacao === 'eletricidade' || formData.tipo_simulacao === 'dual') && (
+                <SimulatorElectricityForm
+                  formData={formData}
+                  updateField={updateField}
+                  numericDisplayValue={numericDisplayValue}
+                  handleNumericChange={handleNumericChange}
+                  handleNumericBlur={handleNumericBlur}
+                  fieldErrors={fieldErrors}
+                  inputClass={inputClass}
+                  showCommonFields={showCommonFields}
+                />
+              )}
+
+              {step === 2 && formData.tipo_simulacao === 'dual' && (
+                <SimulatorGasForm
+                  formData={formData}
+                  updateField={updateField}
+                  numericDisplayValue={numericDisplayValue}
+                  handleNumericChange={handleNumericChange}
+                  handleNumericBlur={handleNumericBlur}
+                  fieldErrors={fieldErrors}
+                  inputClass={inputClass}
+                />
+              )}
+
+              {step > 0 && (
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    className="px-6 py-3 border border-border rounded-lg font-body text-cream-muted hover:text-foreground transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  {(step === 1 && formData.tipo_simulacao === 'gas') && (
+                    <button
+                      type="button"
+                      onClick={handleNextFromGas}
+                      className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                    >
+                      Simular Poupança
+                    </button>
+                  )}
+                  {(step === 1 && formData.tipo_simulacao === 'eletricidade') && (
+                    <button
+                      type="button"
+                      onClick={handleNextFromElectricity}
+                      className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                    >
+                      Simular Poupança
+                    </button>
+                  )}
+                  {(step === 1 && formData.tipo_simulacao === 'dual') && (
+                    <button
+                      type="button"
+                      onClick={handleNextFromElectricity}
+                      className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                    >
+                      Seguinte
+                    </button>
+                  )}
+                  {(step === 2 && formData.tipo_simulacao === 'dual') && (
+                    <button
+                      type="button"
+                      onClick={handleNextFromGas}
+                      className="px-8 py-3 bg-gold text-primary-foreground rounded-lg font-body font-medium hover:bg-gold-light transition-all"
+                    >
+                      Simular Poupança
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </DialogContent>

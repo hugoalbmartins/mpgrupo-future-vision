@@ -3,10 +3,14 @@ import { Zap, Flame, Layers } from 'lucide-react';
 
 interface SimulatorTypeSelectionProps {
   onSelect: (tipo: TipoSimulacao) => void;
+  availableEnergies: {
+    hasElectricidade: boolean;
+    hasGas: boolean;
+  };
 }
 
-const SimulatorTypeSelection = ({ onSelect }: SimulatorTypeSelectionProps) => {
-  const types = [
+const SimulatorTypeSelection = ({ onSelect, availableEnergies }: SimulatorTypeSelectionProps) => {
+  const allTypes = [
     {
       id: 'eletricidade' as TipoSimulacao,
       title: 'Eletricidade',
@@ -15,6 +19,7 @@ const SimulatorTypeSelection = ({ onSelect }: SimulatorTypeSelectionProps) => {
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
       borderColor: 'border-yellow-500',
+      available: availableEnergies.hasElectricidade,
     },
     {
       id: 'gas' as TipoSimulacao,
@@ -24,6 +29,7 @@ const SimulatorTypeSelection = ({ onSelect }: SimulatorTypeSelectionProps) => {
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
       borderColor: 'border-orange-500',
+      available: availableEnergies.hasGas,
     },
     {
       id: 'dual' as TipoSimulacao,
@@ -33,8 +39,11 @@ const SimulatorTypeSelection = ({ onSelect }: SimulatorTypeSelectionProps) => {
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
       borderColor: 'border-green-500',
+      available: availableEnergies.hasElectricidade && availableEnergies.hasGas,
     },
   ];
+
+  const types = allTypes.filter(type => type.available);
 
   return (
     <div className="grid md:grid-cols-3 gap-6 py-6">
