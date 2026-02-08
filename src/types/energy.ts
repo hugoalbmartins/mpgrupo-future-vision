@@ -111,6 +111,13 @@ export interface ResultadoComparacao {
     ponta?: number;
     cheias?: number;
   };
+  valores_kwh: {
+    simples?: number;
+    vazio?: number;
+    fora_vazio?: number;
+    ponta?: number;
+    cheias?: number;
+  };
   custo_total_energia: number;
   subtotal: number;
   poupanca: number;

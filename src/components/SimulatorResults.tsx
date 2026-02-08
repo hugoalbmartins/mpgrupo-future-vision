@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulacaoInput, Operadora, ConfiguracaoDesconto, ResultadoComparacao } from '@/types/energy';
 import { supabase } from '@/lib/supabase';
@@ -135,18 +135,14 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   const toNum = (val: unknown): number => Number(val) || 0;
 
   const calcularDescontoPct = (desconto: ConfiguracaoDesconto, tipoPotencia: boolean): number => {
-    let pct = toNum(tipoPotencia ? desconto.desconto_base_potencia : desconto.desconto_base_energia);
     if (simulacao.debito_direto && simulacao.fatura_eletronica) {
-      pct += toNum(tipoPotencia ? desconto.desconto_dd_fe_potencia : desconto.desconto_dd_fe_energia);
-    } else {
-      if (simulacao.debito_direto) {
-        pct += toNum(tipoPotencia ? desconto.desconto_dd_potencia : desconto.desconto_dd_energia);
-      }
-      if (simulacao.fatura_eletronica) {
-        pct += toNum(tipoPotencia ? desconto.desconto_fe_potencia : desconto.desconto_fe_energia);
-      }
+      return toNum(tipoPotencia ? desconto.desconto_dd_fe_potencia : desconto.desconto_dd_fe_energia);
+    } else if (simulacao.debito_direto) {
+      return toNum(tipoPotencia ? desconto.desconto_dd_potencia : desconto.desconto_dd_energia);
+    } else if (simulacao.fatura_eletronica) {
+      return toNum(tipoPotencia ? desconto.desconto_fe_potencia : desconto.desconto_fe_energia);
     }
-    return pct;
+    return toNum(tipoPotencia ? desconto.desconto_base_potencia : desconto.desconto_base_energia);
   };
 
   const calcularCustoOperadora = (
@@ -164,6 +160,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     let custoPotencia = 0;
     let custoEnergia = 0;
     const custosEnergia: ResultadoComparacao['custos_energia'] = {};
+    const valoresKwh: ResultadoComparacao['valores_kwh'] = {};
     let poupancaPotencialDDFE: number | undefined;
 
     if (simulacao.tipo_simulacao === 'eletricidade' || simulacao.tipo_simulacao === 'dual') {
@@ -172,70 +169,82 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
 
       const potenciasObj = tarifasCiclo.valor_diario_potencias as Record<string, number>;
       valorPotenciaDiaria = potenciasObj[simulacao.potencia.toString()] || 0;
-      custoPotencia = valorPotenciaDiaria * simulacao.dias_fatura;
+
+      let vKwhSimples = 0, vKwhVazio = 0, vKwhForaVazio = 0, vKwhPonta = 0, vKwhCheias = 0;
 
       if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCiclo) {
-        custoEnergia = (simulacao.kwh_simples || 0) * tarifasCiclo.valor_kwh;
-        custosEnergia.simples = custoEnergia;
+        vKwhSimples = tarifasCiclo.valor_kwh;
       } else if (simulacao.ciclo_horario === 'bi-horario' && 'valor_kwh_vazio' in tarifasCiclo) {
-        const custoVazio = (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio;
-        const custoForaVazio = (simulacao.kwh_fora_vazio || 0) * tarifasCiclo.valor_kwh_fora_vazio;
-        custoEnergia = custoVazio + custoForaVazio;
-        custosEnergia.vazio = custoVazio;
-        custosEnergia.fora_vazio = custoForaVazio;
+        vKwhVazio = tarifasCiclo.valor_kwh_vazio;
+        vKwhForaVazio = tarifasCiclo.valor_kwh_fora_vazio;
       } else if (simulacao.ciclo_horario === 'tri-horario' && 'valor_kwh_ponta' in tarifasCiclo) {
-        const custoVazio = (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio;
-        const custoPonta = (simulacao.kwh_ponta || 0) * tarifasCiclo.valor_kwh_ponta;
-        const custoCheias = (simulacao.kwh_cheias || 0) * tarifasCiclo.valor_kwh_cheias;
-        custoEnergia = custoVazio + custoPonta + custoCheias;
-        custosEnergia.vazio = custoVazio;
-        custosEnergia.ponta = custoPonta;
-        custosEnergia.cheias = custoCheias;
+        vKwhVazio = tarifasCiclo.valor_kwh_vazio;
+        vKwhPonta = tarifasCiclo.valor_kwh_ponta;
+        vKwhCheias = tarifasCiclo.valor_kwh_cheias;
       }
 
+      const rawPotenciaDiaria = valorPotenciaDiaria;
+
       if (descontoEletricidade) {
-        const descontoPotenciaPct = calcularDescontoPct(descontoEletricidade, true);
-        const descontoEnergiaPct = calcularDescontoPct(descontoEletricidade, false);
+        const pctPot = calcularDescontoPct(descontoEletricidade, true);
+        const pctEne = calcularDescontoPct(descontoEletricidade, false);
+        const fPot = 1 - pctPot / 100;
+        const fEne = 1 - pctEne / 100;
 
-        custoPotencia = custoPotencia * (1 - descontoPotenciaPct / 100);
-        custoEnergia = custoEnergia * (1 - descontoEnergiaPct / 100);
+        valorPotenciaDiaria *= fPot;
+        vKwhSimples *= fEne;
+        vKwhVazio *= fEne;
+        vKwhForaVazio *= fEne;
+        vKwhPonta *= fEne;
+        vKwhCheias *= fEne;
+      }
 
-        const fatorEnergia = 1 - descontoEnergiaPct / 100;
-        if (custosEnergia.simples !== undefined) custosEnergia.simples *= fatorEnergia;
-        if (custosEnergia.vazio !== undefined) custosEnergia.vazio *= fatorEnergia;
-        if (custosEnergia.fora_vazio !== undefined) custosEnergia.fora_vazio *= fatorEnergia;
-        if (custosEnergia.ponta !== undefined) custosEnergia.ponta *= fatorEnergia;
-        if (custosEnergia.cheias !== undefined) custosEnergia.cheias *= fatorEnergia;
+      custoPotencia = valorPotenciaDiaria * simulacao.dias_fatura;
+
+      if (simulacao.ciclo_horario === 'simples') {
+        custoEnergia = (simulacao.kwh_simples || 0) * vKwhSimples;
+        custosEnergia.simples = custoEnergia;
+        valoresKwh.simples = vKwhSimples;
+      } else if (simulacao.ciclo_horario === 'bi-horario') {
+        custosEnergia.vazio = (simulacao.kwh_vazio || 0) * vKwhVazio;
+        custosEnergia.fora_vazio = (simulacao.kwh_fora_vazio || 0) * vKwhForaVazio;
+        custoEnergia = (custosEnergia.vazio || 0) + (custosEnergia.fora_vazio || 0);
+        valoresKwh.vazio = vKwhVazio;
+        valoresKwh.fora_vazio = vKwhForaVazio;
+      } else if (simulacao.ciclo_horario === 'tri-horario') {
+        custosEnergia.vazio = (simulacao.kwh_vazio || 0) * vKwhVazio;
+        custosEnergia.ponta = (simulacao.kwh_ponta || 0) * vKwhPonta;
+        custosEnergia.cheias = (simulacao.kwh_cheias || 0) * vKwhCheias;
+        custoEnergia = (custosEnergia.vazio || 0) + (custosEnergia.ponta || 0) + (custosEnergia.cheias || 0);
+        valoresKwh.vazio = vKwhVazio;
+        valoresKwh.ponta = vKwhPonta;
+        valoresKwh.cheias = vKwhCheias;
       }
 
       subtotalEletricidade = custoPotencia + custoEnergia;
 
       if (descontoEletricidade && (!simulacao.debito_direto || !simulacao.fatura_eletronica)) {
-        const descontoPotenciaTotal = toNum(descontoEletricidade.desconto_dd_potencia) + toNum(descontoEletricidade.desconto_fe_potencia);
-        const descontoEnergiaTotal = toNum(descontoEletricidade.desconto_dd_energia) + toNum(descontoEletricidade.desconto_fe_energia);
+        const pctDDFEPot = toNum(descontoEletricidade.desconto_dd_fe_potencia);
+        const pctDDFEEne = toNum(descontoEletricidade.desconto_dd_fe_energia);
 
-        const custoPotenciaComDesconto = (valorPotenciaDiaria * simulacao.dias_fatura) * (1 - descontoPotenciaTotal / 100);
-        let custoEnergiaBase = 0;
+        const potDDFE = rawPotenciaDiaria * (1 - pctDDFEPot / 100) * simulacao.dias_fatura;
+        let eneDDFE = 0;
 
-        const tarifasCicloDD = operadora.tarifas?.[simulacao.ciclo_horario];
-        if (tarifasCicloDD) {
-          if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCicloDD) {
-            custoEnergiaBase = (simulacao.kwh_simples || 0) * tarifasCicloDD.valor_kwh;
-          } else if (simulacao.ciclo_horario === 'bi-horario' && 'valor_kwh_vazio' in tarifasCicloDD) {
-            custoEnergiaBase =
-              (simulacao.kwh_vazio || 0) * tarifasCicloDD.valor_kwh_vazio +
-              (simulacao.kwh_fora_vazio || 0) * tarifasCicloDD.valor_kwh_fora_vazio;
-          } else if (simulacao.ciclo_horario === 'tri-horario' && 'valor_kwh_ponta' in tarifasCicloDD) {
-            custoEnergiaBase =
-              (simulacao.kwh_vazio || 0) * tarifasCicloDD.valor_kwh_vazio +
-              (simulacao.kwh_ponta || 0) * tarifasCicloDD.valor_kwh_ponta +
-              (simulacao.kwh_cheias || 0) * tarifasCicloDD.valor_kwh_cheias;
-          }
+        if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCiclo) {
+          eneDDFE = (simulacao.kwh_simples || 0) * tarifasCiclo.valor_kwh * (1 - pctDDFEEne / 100);
+        } else if (simulacao.ciclo_horario === 'bi-horario' && 'valor_kwh_vazio' in tarifasCiclo) {
+          eneDDFE =
+            (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio * (1 - pctDDFEEne / 100) +
+            (simulacao.kwh_fora_vazio || 0) * tarifasCiclo.valor_kwh_fora_vazio * (1 - pctDDFEEne / 100);
+        } else if (simulacao.ciclo_horario === 'tri-horario' && 'valor_kwh_ponta' in tarifasCiclo) {
+          eneDDFE =
+            (simulacao.kwh_vazio || 0) * tarifasCiclo.valor_kwh_vazio * (1 - pctDDFEEne / 100) +
+            (simulacao.kwh_ponta || 0) * tarifasCiclo.valor_kwh_ponta * (1 - pctDDFEEne / 100) +
+            (simulacao.kwh_cheias || 0) * tarifasCiclo.valor_kwh_cheias * (1 - pctDDFEEne / 100);
         }
 
-        const custoEnergiaComDesconto = custoEnergiaBase * (1 - descontoEnergiaTotal / 100);
-        const subtotalComDesconto = custoPotenciaComDesconto + custoEnergiaComDesconto;
-        poupancaPotencialDDFE = subtotalEletricidade - subtotalComDesconto;
+        const subtotalDDFE = potDDFE + eneDDFE;
+        poupancaPotencialDDFE = subtotalEletricidade - subtotalDDFE;
       }
     }
 
@@ -253,17 +262,16 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       const escalaoData = tarifasGas.escaloes?.[escalaoKey];
       gasValorDiario = escalaoData?.valor_diario || 0;
       gasPrecoKwh = escalaoData?.valor_kwh || 0;
-      gasCustoTotalDiario = gasValorDiario * simulacao.dias_fatura;
-      gasCustoEnergia = (simulacao.gas_kwh || 0) * gasPrecoKwh;
 
       if (descontoGas) {
-        const descontoDiarioPct = calcularDescontoPct(descontoGas, true);
-        const descontoEnergiaPct = calcularDescontoPct(descontoGas, false);
-
-        gasCustoTotalDiario = gasCustoTotalDiario * (1 - descontoDiarioPct / 100);
-        gasCustoEnergia = gasCustoEnergia * (1 - descontoEnergiaPct / 100);
+        const pctDiario = calcularDescontoPct(descontoGas, true);
+        const pctEne = calcularDescontoPct(descontoGas, false);
+        gasValorDiario *= (1 - pctDiario / 100);
+        gasPrecoKwh *= (1 - pctEne / 100);
       }
 
+      gasCustoTotalDiario = gasValorDiario * simulacao.dias_fatura;
+      gasCustoEnergia = (simulacao.gas_kwh || 0) * gasPrecoKwh;
       subtotalGas = gasCustoTotalDiario + gasCustoEnergia;
     }
 
@@ -312,6 +320,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       valor_potencia_diaria: valorPotenciaDiaria,
       custo_total_potencia: custoPotencia,
       custos_energia: custosEnergia,
+      valores_kwh: valoresKwh,
       custo_total_energia: custoEnergia,
       subtotal,
       poupanca,
@@ -342,21 +351,16 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     }).format(value);
   };
 
-  const getCellStyle = (resultado: ResultadoComparacao, melhorResultado: ResultadoComparacao | undefined) => {
-    const isBestWithSavings = resultado === melhorResultado && resultado.poupanca > 0;
-    return isBestWithSavings ? { boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)' } : undefined;
-  };
-
-  const getCellClassName = (resultado: ResultadoComparacao, melhorResultado: ResultadoComparacao | undefined, baseClass: string = '') => {
-    const isBestWithSavings = resultado === melhorResultado && resultado.poupanca > 0;
-    const isBest = resultado === melhorResultado;
-
-    if (isBestWithSavings) {
-      return `${baseClass} border-green-500 border-2`;
-    } else if (isBest) {
-      return `${baseClass} border-border`;
-    }
-    return `${baseClass} border-border`;
+  const colStyle = (r: ResultadoComparacao, pos: 'first' | 'mid' | 'last'): React.CSSProperties => {
+    const isBest = r === melhorResultado && r.poupanca > 0;
+    if (!isBest) return {};
+    const s: React.CSSProperties = {
+      borderLeft: '2.5px solid rgb(34, 197, 94)',
+      borderRight: '2.5px solid rgb(34, 197, 94)',
+    };
+    if (pos === 'first') s.borderTop = '2.5px solid rgb(34, 197, 94)';
+    if (pos === 'last') s.borderBottom = '2.5px solid rgb(34, 197, 94)';
+    return s;
   };
 
   const handleExportPDF = (filteredResultados?: ResultadoComparacao[]) => {
@@ -535,39 +539,27 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                     Operadora Atual<br/>
                     <span className="text-xs font-normal text-cream-muted">{simulacao.operadora_atual}</span>
                   </th>
-                  {resultados.map((r) => {
-                    const isBestWithSavings = r === melhorResultado && r.poupanca > 0;
-                    return (
-                      <th
-                        key={r.operadora.id}
-                        className={`p-3 text-center font-body font-medium text-foreground border-2 ${
-                          isBestWithSavings
-                            ? 'border-green-500'
-                            : r === melhorResultado
-                            ? 'border-border'
-                            : 'border-border'
-                        }`}
-                        style={isBestWithSavings ? {
-                          boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)'
-                        } : undefined}
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          {r.operadora.logotipo_url && (
-                            <img
-                              src={r.operadora.logotipo_url}
-                              alt={r.operadora.nome}
-                              className="w-20 h-10 object-contain bg-white rounded p-1"
-                            />
-                          )}
-                          <span className="text-xs">{r.operadora.nome}</span>
-                        </div>
-                      </th>
-                    );
-                  })}
+                  {resultados.map((r) => (
+                    <th
+                      key={r.operadora.id}
+                      className="p-3 text-center font-body font-medium text-foreground border border-border"
+                      style={colStyle(r, 'first')}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        {r.operadora.logotipo_url && (
+                          <img
+                            src={r.operadora.logotipo_url}
+                            alt={r.operadora.nome}
+                            className="w-20 h-10 object-contain bg-white rounded p-1"
+                          />
+                        )}
+                        <span className="text-xs">{r.operadora.nome}</span>
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {/* Potência */}
                 <tr className="bg-muted/30">
                   <td colSpan={2 + resultados.length} className="p-2 font-body font-semibold text-foreground border border-border">
                     POTÊNCIA ({simulacao.potencia} kVA)
@@ -583,8 +575,8 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={getCellClassName(r, melhorResultado, 'p-3 text-center font-body text-foreground border')}
-                      style={getCellStyle(r, melhorResultado)}
+                      className="p-3 text-center font-body text-foreground border border-border"
+                      style={colStyle(r, 'mid')}
                     >
                       {formatCurrency(r.valor_potencia_diaria, 6)}
                     </td>
@@ -600,15 +592,14 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   {resultados.map((r) => (
                     <td
                       key={r.operadora.id}
-                      className={getCellClassName(r, melhorResultado, 'p-3 text-center font-body font-medium text-foreground border')}
-                      style={getCellStyle(r, melhorResultado)}
+                      className="p-3 text-center font-body font-medium text-foreground border border-border"
+                      style={colStyle(r, 'mid')}
                     >
                       {formatCurrency(r.custo_total_potencia, 2)}
                     </td>
                   ))}
                 </tr>
 
-                {/* Energia - Ciclo Simples */}
                 {simulacao.ciclo_horario === 'simples' && (
                   <>
                     <tr className="bg-muted/30">
@@ -623,20 +614,15 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.preco_simples || 0, 6)}
                       </td>
-                      {resultados.map((r) => {
-                        const tarifasCiclo = r.operadora.tarifas?.['simples'];
-                        const valorKwh = tarifasCiclo && 'valor_kwh' in tarifasCiclo ? tarifasCiclo.valor_kwh : 0;
-                        return (
-                          <td
-                            key={r.operadora.id}
-                            className={`p-3 text-center font-body text-foreground border border-border ${
-                              r === melhorResultado ? 'bg-gold/10' : ''
-                            }`}
-                          >
-                            {formatCurrency(valorKwh, 6)}
-                          </td>
-                        );
-                      })}
+                      {resultados.map((r) => (
+                        <td
+                          key={r.operadora.id}
+                          className="p-3 text-center font-body text-foreground border border-border"
+                          style={colStyle(r, 'mid')}
+                        >
+                          {formatCurrency(r.valores_kwh.simples || 0, 6)}
+                        </td>
+                      ))}
                     </tr>
                     <tr>
                       <td className="p-3 font-body text-cream-muted border border-border">
@@ -648,9 +634,8 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                       {resultados.map((r) => (
                         <td
                           key={r.operadora.id}
-                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
+                          className="p-3 text-center font-body font-medium text-foreground border border-border"
+                          style={colStyle(r, 'mid')}
                         >
                           {formatCurrency(r.custos_energia.simples || 0, 2)}
                         </td>
@@ -659,7 +644,6 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   </>
                 )}
 
-                {/* Energia - Bi-horário */}
                 {simulacao.ciclo_horario === 'bi-horario' && (
                   <>
                     <tr className="bg-muted/30">
@@ -668,26 +652,15 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                       </td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-body text-cream-muted border border-border">
-                        Valor kWh Vazio
-                      </td>
+                      <td className="p-3 font-body text-cream-muted border border-border">Valor kWh Vazio</td>
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.preco_vazio || 0, 6)}
                       </td>
-                      {resultados.map((r) => {
-                        const tarifasCiclo = r.operadora.tarifas?.['bi-horario'];
-                        const valorKwh = tarifasCiclo && 'valor_kwh_vazio' in tarifasCiclo ? tarifasCiclo.valor_kwh_vazio : 0;
-                        return (
-                          <td
-                            key={r.operadora.id}
-                            className={`p-3 text-center font-body text-foreground border border-border ${
-                              r === melhorResultado ? 'bg-gold/10' : ''
-                            }`}
-                          >
-                            {formatCurrency(valorKwh, 6)}
-                          </td>
-                        );
-                      })}
+                      {resultados.map((r) => (
+                        <td key={r.operadora.id} className="p-3 text-center font-body text-foreground border border-border" style={colStyle(r, 'mid')}>
+                          {formatCurrency(r.valores_kwh.vazio || 0, 6)}
+                        </td>
+                      ))}
                     </tr>
                     <tr>
                       <td className="p-3 font-body text-cream-muted border border-border">
@@ -697,37 +670,21 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         {formatCurrency((simulacao.kwh_vazio || 0) * (simulacao.preco_vazio || 0), 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-medium text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.custos_energia.vazio || 0, 2)}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="p-3 font-body text-cream-muted border border-border">
-                        Valor kWh Fora Vazio
-                      </td>
+                      <td className="p-3 font-body text-cream-muted border border-border">Valor kWh Fora Vazio</td>
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.preco_fora_vazio || 0, 6)}
                       </td>
-                      {resultados.map((r) => {
-                        const tarifasCiclo = r.operadora.tarifas?.['bi-horario'];
-                        const valorKwh = tarifasCiclo && 'valor_kwh_fora_vazio' in tarifasCiclo ? tarifasCiclo.valor_kwh_fora_vazio : 0;
-                        return (
-                          <td
-                            key={r.operadora.id}
-                            className={`p-3 text-center font-body text-foreground border border-border ${
-                              r === melhorResultado ? 'bg-gold/10' : ''
-                            }`}
-                          >
-                            {formatCurrency(valorKwh, 6)}
-                          </td>
-                        );
-                      })}
+                      {resultados.map((r) => (
+                        <td key={r.operadora.id} className="p-3 text-center font-body text-foreground border border-border" style={colStyle(r, 'mid')}>
+                          {formatCurrency(r.valores_kwh.fora_vazio || 0, 6)}
+                        </td>
+                      ))}
                     </tr>
                     <tr>
                       <td className="p-3 font-body text-cream-muted border border-border">
@@ -737,12 +694,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         {formatCurrency((simulacao.kwh_fora_vazio || 0) * (simulacao.preco_fora_vazio || 0), 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-medium text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.custos_energia.fora_vazio || 0, 2)}
                         </td>
                       ))}
@@ -750,7 +702,6 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   </>
                 )}
 
-                {/* Energia - Tri-horário */}
                 {simulacao.ciclo_horario === 'tri-horario' && (
                   <>
                     <tr className="bg-muted/30">
@@ -759,26 +710,15 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                       </td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-body text-cream-muted border border-border">
-                        Valor kWh Vazio
-                      </td>
+                      <td className="p-3 font-body text-cream-muted border border-border">Valor kWh Vazio</td>
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.preco_vazio || 0, 6)}
                       </td>
-                      {resultados.map((r) => {
-                        const tarifasCiclo = r.operadora.tarifas?.['tri-horario'];
-                        const valorKwh = tarifasCiclo && 'valor_kwh_vazio' in tarifasCiclo ? tarifasCiclo.valor_kwh_vazio : 0;
-                        return (
-                          <td
-                            key={r.operadora.id}
-                            className={`p-3 text-center font-body text-foreground border border-border ${
-                              r === melhorResultado ? 'bg-gold/10' : ''
-                            }`}
-                          >
-                            {formatCurrency(valorKwh, 6)}
-                          </td>
-                        );
-                      })}
+                      {resultados.map((r) => (
+                        <td key={r.operadora.id} className="p-3 text-center font-body text-foreground border border-border" style={colStyle(r, 'mid')}>
+                          {formatCurrency(r.valores_kwh.vazio || 0, 6)}
+                        </td>
+                      ))}
                     </tr>
                     <tr>
                       <td className="p-3 font-body text-cream-muted border border-border">
@@ -788,37 +728,21 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         {formatCurrency((simulacao.kwh_vazio || 0) * (simulacao.preco_vazio || 0), 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-medium text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.custos_energia.vazio || 0, 2)}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="p-3 font-body text-cream-muted border border-border">
-                        Valor kWh Ponta
-                      </td>
+                      <td className="p-3 font-body text-cream-muted border border-border">Valor kWh Ponta</td>
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.preco_ponta || 0, 6)}
                       </td>
-                      {resultados.map((r) => {
-                        const tarifasCiclo = r.operadora.tarifas?.['tri-horario'];
-                        const valorKwh = tarifasCiclo && 'valor_kwh_ponta' in tarifasCiclo ? tarifasCiclo.valor_kwh_ponta : 0;
-                        return (
-                          <td
-                            key={r.operadora.id}
-                            className={`p-3 text-center font-body text-foreground border border-border ${
-                              r === melhorResultado ? 'bg-gold/10' : ''
-                            }`}
-                          >
-                            {formatCurrency(valorKwh, 6)}
-                          </td>
-                        );
-                      })}
+                      {resultados.map((r) => (
+                        <td key={r.operadora.id} className="p-3 text-center font-body text-foreground border border-border" style={colStyle(r, 'mid')}>
+                          {formatCurrency(r.valores_kwh.ponta || 0, 6)}
+                        </td>
+                      ))}
                     </tr>
                     <tr>
                       <td className="p-3 font-body text-cream-muted border border-border">
@@ -828,37 +752,21 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         {formatCurrency((simulacao.kwh_ponta || 0) * (simulacao.preco_ponta || 0), 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-medium text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.custos_energia.ponta || 0, 2)}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="p-3 font-body text-cream-muted border border-border">
-                        Valor kWh Cheias
-                      </td>
+                      <td className="p-3 font-body text-cream-muted border border-border">Valor kWh Cheias</td>
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.preco_cheias || 0, 6)}
                       </td>
-                      {resultados.map((r) => {
-                        const tarifasCiclo = r.operadora.tarifas?.['tri-horario'];
-                        const valorKwh = tarifasCiclo && 'valor_kwh_cheias' in tarifasCiclo ? tarifasCiclo.valor_kwh_cheias : 0;
-                        return (
-                          <td
-                            key={r.operadora.id}
-                            className={`p-3 text-center font-body text-foreground border border-border ${
-                              r === melhorResultado ? 'bg-gold/10' : ''
-                            }`}
-                          >
-                            {formatCurrency(valorKwh, 6)}
-                          </td>
-                        );
-                      })}
+                      {resultados.map((r) => (
+                        <td key={r.operadora.id} className="p-3 text-center font-body text-foreground border border-border" style={colStyle(r, 'mid')}>
+                          {formatCurrency(r.valores_kwh.cheias || 0, 6)}
+                        </td>
+                      ))}
                     </tr>
                     <tr>
                       <td className="p-3 font-body text-cream-muted border border-border">
@@ -868,12 +776,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         {formatCurrency((simulacao.kwh_cheias || 0) * (simulacao.preco_cheias || 0), 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-medium text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.custos_energia.cheias || 0, 2)}
                         </td>
                       ))}
@@ -881,7 +784,6 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   </>
                 )}
 
-                {/* Gás */}
                 {(simulacao.tipo_simulacao === 'gas' || simulacao.tipo_simulacao === 'dual') && (
                   <>
                     <tr className="bg-muted/30">
@@ -890,18 +792,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                       </td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-body text-cream-muted border border-border">
-                        Valor Diário
-                      </td>
+                      <td className="p-3 font-body text-cream-muted border border-border">Valor Diário</td>
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.gas_valor_diario_atual || 0, 6)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={getCellClassName(r, melhorResultado, 'p-3 text-center font-body text-foreground border')}
-                          style={getCellStyle(r, melhorResultado)}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.gas_valor_diario || 0, 6)}
                         </td>
                       ))}
@@ -914,29 +810,18 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         {formatCurrency((simulacao.gas_valor_diario_atual || 0) * simulacao.dias_fatura, 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={getCellClassName(r, melhorResultado, 'p-3 text-center font-body font-medium text-foreground border')}
-                          style={getCellStyle(r, melhorResultado)}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-medium text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.gas_custo_total_diario || 0, 2)}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="p-3 font-body text-cream-muted border border-border">
-                        Valor kWh Gás
-                      </td>
+                      <td className="p-3 font-body text-cream-muted border border-border">Valor kWh Gás</td>
                       <td className="p-3 text-center font-body text-foreground border border-border">
                         {formatCurrency(simulacao.gas_preco_kwh || 0, 6)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={`p-3 text-center font-body text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.gas_preco_kwh || 0, 6)}
                         </td>
                       ))}
@@ -949,12 +834,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                         {formatCurrency((simulacao.gas_kwh || 0) * (simulacao.gas_preco_kwh || 0), 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className={`p-3 text-center font-body font-medium text-foreground border border-border ${
-                            r === melhorResultado ? 'bg-gold/10' : ''
-                          }`}
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-medium text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.gas_custo_energia || 0, 2)}
                         </td>
                       ))}
@@ -962,37 +842,26 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   </>
                 )}
 
-                {/* Subtotais por Energia (apenas para dual) */}
                 {simulacao.tipo_simulacao === 'dual' && (
                   <>
                     <tr className="bg-blue-500/5">
-                      <td className="p-3 font-body font-semibold text-foreground border border-border">
-                        SUBTOTAL ELETRICIDADE
-                      </td>
+                      <td className="p-3 font-body font-semibold text-foreground border border-border">SUBTOTAL ELETRICIDADE</td>
                       <td className="p-3 text-center font-body font-semibold text-foreground border border-border">
                         {formatCurrency(custoAtualEletricidade, 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className="p-3 text-center font-body font-semibold text-foreground border border-border"
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-semibold text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.subtotal_eletricidade || 0, 2)}
                         </td>
                       ))}
                     </tr>
                     <tr className="bg-orange-500/5">
-                      <td className="p-3 font-body font-semibold text-foreground border border-border">
-                        SUBTOTAL GÁS
-                      </td>
+                      <td className="p-3 font-body font-semibold text-foreground border border-border">SUBTOTAL GÁS</td>
                       <td className="p-3 text-center font-body font-semibold text-foreground border border-border">
                         {formatCurrency(custoAtualGas, 2)}
                       </td>
                       {resultados.map((r) => (
-                        <td
-                          key={r.operadora.id}
-                          className="p-3 text-center font-body font-semibold text-foreground border border-border"
-                        >
+                        <td key={r.operadora.id} className="p-3 text-center font-body font-semibold text-foreground border border-border" style={colStyle(r, 'mid')}>
                           {formatCurrency(r.subtotal_gas || 0, 2)}
                         </td>
                       ))}
@@ -1000,98 +869,72 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   </>
                 )}
 
-                {/* Totais */}
                 <tr className="bg-muted/50">
-                  <td className="p-3 font-body font-bold text-foreground border border-border">
-                    TOTAL FATURA
-                  </td>
+                  <td className="p-3 font-body font-bold text-foreground border border-border">TOTAL FATURA</td>
                   <td className="p-3 text-center font-body font-bold text-lg text-foreground border border-border">
                     {formatCurrency(custoAtual, 2)}
                   </td>
                   {resultados.map((r) => (
-                    <td
-                      key={r.operadora.id}
-                      className={`p-3 text-center font-body font-bold text-lg text-foreground border border-border ${
-                        r === melhorResultado ? 'bg-gold/20' : ''
-                      }`}
-                    >
+                    <td key={r.operadora.id} className="p-3 text-center font-body font-bold text-lg text-foreground border border-border" style={colStyle(r, 'mid')}>
                       {formatCurrency(r.subtotal, 2)}
                     </td>
                   ))}
                 </tr>
-                <tr className="bg-gold/5">
-                  <td className="p-3 font-body font-bold text-foreground border border-border">
-                    POUPANÇA
-                  </td>
-                  <td className="p-3 text-center font-body text-foreground border border-border">
-                    -
-                  </td>
-                  {resultados.map((r) => {
-                    const isBestWithSavings = r === melhorResultado && r.poupanca > 0;
-                    const isBest = r === melhorResultado;
-
-                    let className = 'p-3 text-center font-body font-bold text-lg ';
-                    if (isBestWithSavings) {
-                      className += 'border-2 border-green-500 text-green-700 dark:text-green-400';
-                    } else if (isBest) {
-                      className += 'border text-gold border-border';
-                    } else if (r.poupanca > 0) {
-                      className += 'border text-green-600 border-border';
-                    } else {
-                      className += 'border text-red-600 border-border';
-                    }
-
-                    return (
-                      <td
-                        key={r.operadora.id}
-                        className={className}
-                        style={isBestWithSavings ? {
-                          boxShadow: '0 0 20px rgba(34, 197, 94, 0.5)'
-                        } : undefined}
-                      >
-                        {formatCurrency(r.poupanca, 2)}
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {resultados.some((r) => r.poupanca > 0) && (
-                  <tr className="bg-green-500/5">
-                    <td className="p-3 font-body font-medium text-foreground border border-border">
-                      SELECIONAR
-                    </td>
-                    <td className="p-3 text-center font-body text-cream-muted border border-border text-xs">
-                      Operadora atual
-                    </td>
-                    {resultados.map((r) => {
-                      const hasSavings = r.poupanca > 0;
-                      const isSelected = selectedOperadoraId === r.operadora.id;
-                      return (
-                        <td
-                          key={r.operadora.id}
-                          className="p-3 text-center border border-border"
-                        >
-                          {hasSavings ? (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedOperadoraId(isSelected ? null : r.operadora.id)}
-                              className={`mx-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-body text-sm font-medium transition-all ${
-                                isSelected
-                                  ? 'bg-green-500 text-white shadow-lg'
-                                  : 'bg-muted border border-border text-cream-muted hover:border-green-500 hover:text-green-600'
-                              }`}
+                {(() => {
+                  const hasSelectRow = resultados.some((r) => r.poupanca > 0);
+                  return (
+                    <>
+                      <tr className="bg-gold/5">
+                        <td className="p-3 font-body font-bold text-foreground border border-border">POUPANÇA</td>
+                        <td className="p-3 text-center font-body text-foreground border border-border">-</td>
+                        {resultados.map((r) => {
+                          const colorClass = r.poupanca > 0
+                            ? 'text-green-700 dark:text-green-400'
+                            : 'text-red-600';
+                          return (
+                            <td
+                              key={r.operadora.id}
+                              className={`p-3 text-center font-body font-bold text-lg border border-border ${colorClass}`}
+                              style={colStyle(r, hasSelectRow ? 'mid' : 'last')}
                             >
-                              {isSelected && <CheckCircle2 className="w-4 h-4" />}
-                              {isSelected ? 'Selecionada' : 'Selecionar'}
-                            </button>
-                          ) : (
-                            <span className="font-body text-xs text-cream-muted">-</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                )}
+                              {formatCurrency(r.poupanca, 2)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                      {hasSelectRow && (
+                        <tr className="bg-green-500/5">
+                          <td className="p-3 font-body font-medium text-foreground border border-border">SELECIONAR</td>
+                          <td className="p-3 text-center font-body text-cream-muted border border-border text-xs">Operadora atual</td>
+                          {resultados.map((r) => {
+                            const hasSavings = r.poupanca > 0;
+                            const isSelected = selectedOperadoraId === r.operadora.id;
+                            return (
+                              <td key={r.operadora.id} className="p-3 text-center border border-border" style={colStyle(r, 'last')}>
+                                {hasSavings ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOperadoraId(isSelected ? null : r.operadora.id)}
+                                    className={`mx-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-body text-sm font-medium transition-all ${
+                                      isSelected
+                                        ? 'bg-green-500 text-white shadow-lg'
+                                        : 'bg-muted border border-border text-cream-muted hover:border-green-500 hover:text-green-600'
+                                    }`}
+                                  >
+                                    {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                                    {isSelected ? 'Selecionada' : 'Selecionar'}
+                                  </button>
+                                ) : (
+                                  <span className="font-body text-xs text-cream-muted">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      )}
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
