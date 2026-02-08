@@ -27,8 +27,8 @@ const services = [
 
 const achievements = [
   { icon: Award, value: "20+", label: "Anos no Mercado" },
-  { icon: TrendingUp, value: "1M+", label: "Clientes Satisfeitos" },
-  { icon: Shield, value: "100%", label: "Compromisso" },
+  { icon: TrendingUp, value: "milhares", label: "Clientes Satisfeitos" },
+  { icon: Shield, value: "100%", label: "Compromisso e Transparência" },
 ];
 
 const scrollToContactFatura = (e: React.MouseEvent) => {
