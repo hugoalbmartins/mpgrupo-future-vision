@@ -26,12 +26,6 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   useEffect(() => {
     if (open) {
       calcularResultados();
-
-      const interval = setInterval(() => {
-        calcularResultados();
-      }, 60000);
-
-      return () => clearInterval(interval);
     }
   }, [open, simulacao]);
 
@@ -363,6 +357,17 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     return s;
   };
 
+  const getDiscountTypeText = (): string => {
+    if (simulacao.debito_direto && simulacao.fatura_eletronica) {
+      return 'Descontos Base + Débito Direto + Fatura Eletrónica';
+    } else if (simulacao.debito_direto) {
+      return 'Descontos Base + Débito Direto';
+    } else if (simulacao.fatura_eletronica) {
+      return 'Descontos Base + Fatura Eletrónica';
+    }
+    return 'Descontos Base';
+  };
+
   const handleExportPDF = (filteredResultados?: ResultadoComparacao[]) => {
     try {
       generateSimulationPDF({
@@ -501,6 +506,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
           </div>
         ) : (
         <div className="space-y-6 pt-4">
+          <div className="p-4 bg-blue-500/10 border-2 border-blue-500/50 rounded-lg">
+            <p className="font-body text-sm text-foreground">
+              <strong>Simulação com:</strong> {getDiscountTypeText()}
+            </p>
+          </div>
+
           {melhorResultado && melhorResultado.poupanca > 0 && (
             <div className="p-6 bg-gold/10 border-2 border-gold rounded-lg">
               <div className="flex items-center gap-3 mb-3">
