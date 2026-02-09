@@ -3,18 +3,18 @@ import { Phone, Zap, Sun, Award, TrendingUp, Shield, ArrowRight } from "lucide-r
 
 const services = [
   {
-    icon: Phone,
-    title: "Telecomunicações",
-    description: "Representamos os principais operadores nacionais. Soluções móveis, internet e TV para particulares e empresas.",
-    stat: "20+ anos",
-    statLabel: "de experiência",
-  },
-  {
     icon: Zap,
     title: "Energia",
     description: "Otimize os seus custos energéticos. Comparamos tarifas e encontramos a melhor solução para o seu perfil de consumo.",
     stat: "30%",
     statLabel: "poupança média",
+  },
+  {
+    icon: Phone,
+    title: "Telecomunicações",
+    description: "Representamos os principais operadores nacionais. Soluções móveis, internet e TV para particulares e empresas.",
+    stat: "20+ anos",
+    statLabel: "de experiência",
   },
   {
     icon: Sun,
