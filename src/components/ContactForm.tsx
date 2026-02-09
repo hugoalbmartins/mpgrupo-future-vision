@@ -499,61 +499,65 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                       />
                     </div>
 
-                    <div>
-                      <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
-                        <Upload className="w-4 h-4 text-gold" strokeWidth={1.5} />
-                        Anexar Fatura (opcional)
-                      </label>
-
-                      {!uploadedFile ? (
-                        <label className="block w-full cursor-pointer">
-                          <div className="w-full px-4 py-6 bg-muted border-2 border-dashed border-border rounded-lg hover:border-gold/50 transition-all">
-                            <div className="flex flex-col items-center gap-2 text-center">
-                              <Upload className="w-8 h-8 text-gold" />
-                              <p className="font-body text-sm text-foreground">
-                                Clique para selecionar um arquivo
-                              </p>
-                              <p className="font-body text-xs text-cream-muted">
-                                PDF, JPG ou PNG (max. 5MB)
-                              </p>
-                            </div>
-                          </div>
-                          <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                          />
+                    {formData.subject !== "Parceria" && (
+                      <div>
+                        <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
+                          <Upload className="w-4 h-4 text-gold" strokeWidth={1.5} />
+                          {formData.subject === "Candidatura Espontânea"
+                            ? "Anexe aqui o seu currículo (opcional)"
+                            : "Anexar Fatura (opcional)"}
                         </label>
-                      ) : (
-                        <div className="w-full px-4 py-4 bg-muted border border-gold/50 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-6 h-6 text-gold" />
-                              <div>
-                                <p className="font-body text-sm text-foreground font-medium">
-                                  {uploadedFile.name}
+
+                        {!uploadedFile ? (
+                          <label className="block w-full cursor-pointer">
+                            <div className="w-full px-4 py-6 bg-muted border-2 border-dashed border-border rounded-lg hover:border-gold/50 transition-all">
+                              <div className="flex flex-col items-center gap-2 text-center">
+                                <Upload className="w-8 h-8 text-gold" />
+                                <p className="font-body text-sm text-foreground">
+                                  Clique para selecionar um arquivo
                                 </p>
                                 <p className="font-body text-xs text-cream-muted">
-                                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                  PDF, JPG ou PNG (max. 5MB)
                                 </p>
                               </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={removeFile}
-                              className="p-2 hover:bg-destructive/10 rounded-lg transition-all"
-                            >
-                              <X className="w-5 h-5 text-destructive" />
-                            </button>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={handleFileUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        ) : (
+                          <div className="w-full px-4 py-4 bg-muted border border-gold/50 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-6 h-6 text-gold" />
+                                <div>
+                                  <p className="font-body text-sm text-foreground font-medium">
+                                    {uploadedFile.name}
+                                  </p>
+                                  <p className="font-body text-xs text-cream-muted">
+                                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={removeFile}
+                                className="p-2 hover:bg-destructive/10 rounded-lg transition-all"
+                              >
+                                <X className="w-5 h-5 text-destructive" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {fileError && (
-                        <p className="text-destructive text-sm mt-2">{fileError}</p>
-                      )}
-                    </div>
+                        {fileError && (
+                          <p className="text-destructive text-sm mt-2">{fileError}</p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="p-4 bg-muted/50 rounded-lg border border-border">
                       <p className="font-body text-sm text-cream-muted mb-2">Resumo:</p>
