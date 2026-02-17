@@ -1,8 +1,12 @@
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Zap } from "lucide-react";
 import heroImage from "@/assets/hero-city.jpg";
 
-const Hero = () => {
+interface HeroProps {
+  onSimulatorClick: () => void;
+}
+
+const Hero = ({ onSimulatorClick }: HeroProps) => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image with Overlay */}
@@ -90,25 +94,49 @@ const Hero = () => {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-col sm:flex-row gap-4"
           >
-            <a
-              href="#contact-parceria"
-              onClick={(e) => {
-                e.preventDefault();
-                window.history.replaceState(null, '', '#contact-parceria');
-                window.dispatchEvent(new HashChangeEvent('hashchange'));
-                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+            <motion.button
+              onClick={onSimulatorClick}
+              animate={{
+                scale: [1, 1.07, 1, 1.07, 1, 1, 1, 1, 1, 1],
+                boxShadow: [
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                  "0 0 32px 10px rgba(251,191,36,0.9), 0 0 70px 20px rgba(251,191,36,0.4)",
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                  "0 0 32px 10px rgba(251,191,36,0.9), 0 0 70px 20px rgba(251,191,36,0.4)",
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                ],
               }}
-              className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gold text-primary-foreground font-body font-medium rounded-lg transition-all duration-300 hover:bg-gold-light gold-glow"
+              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.96 }}
+              className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gold text-primary-foreground font-body font-semibold rounded-lg transition-colors duration-200 hover:bg-gold-light relative overflow-hidden"
             >
-              Iniciar Parceria
               <motion.span
-                className="inline-block"
-                animate={{ x: [0, 4, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
+                className="absolute inset-0 rounded-lg"
+                animate={{
+                  background: [
+                    "radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 70%)",
+                    "radial-gradient(ellipse at center, rgba(255,255,255,0.3) 0%, transparent 70%)",
+                    "radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 70%)",
+                  ],
+                }}
+                transition={{ duration: 1.75, repeat: Infinity }}
+              />
+              <Zap className="w-5 h-5 relative z-10" />
+              <span className="relative z-10">Simule aqui a sua poupança!</span>
+              <motion.span
+                className="inline-block relative z-10"
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
               >
                 →
               </motion.span>
-            </a>
+            </motion.button>
             <a
               href="#services"
               className="group inline-flex items-center justify-center gap-3 px-8 py-4 glass-card font-body font-medium text-foreground rounded-lg transition-all duration-300 hover:bg-white/10"
