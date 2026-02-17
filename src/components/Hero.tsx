@@ -94,49 +94,56 @@ const Hero = ({ onSimulatorClick }: HeroProps) => {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-col sm:flex-row gap-4"
           >
-            <motion.button
-              onClick={onSimulatorClick}
-              animate={{
-                scale: [1, 1.07, 1, 1.07, 1, 1, 1, 1, 1, 1],
-                boxShadow: [
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                  "0 0 32px 10px rgba(251,191,36,0.9), 0 0 70px 20px rgba(251,191,36,0.4)",
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                  "0 0 32px 10px rgba(251,191,36,0.9), 0 0 70px 20px rgba(251,191,36,0.4)",
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                  "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
-                ],
-              }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.96 }}
-              className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gold text-primary-foreground font-body font-semibold rounded-lg transition-colors duration-200 hover:bg-gold-light relative overflow-hidden"
-            >
-              <motion.span
-                className="absolute inset-0 rounded-lg"
+            <div className="flex flex-col gap-2">
+              <motion.button
+                onClick={onSimulatorClick}
                 animate={{
-                  background: [
-                    "radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 70%)",
-                    "radial-gradient(ellipse at center, rgba(255,255,255,0.3) 0%, transparent 70%)",
-                    "radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 70%)",
+                  scale: [1, 1.07, 1, 1.07, 1, 1, 1, 1, 1, 1],
+                  boxShadow: [
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                    "0 0 32px 10px rgba(251,191,36,0.9), 0 0 70px 20px rgba(251,191,36,0.4)",
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                    "0 0 32px 10px rgba(251,191,36,0.9), 0 0 70px 20px rgba(251,191,36,0.4)",
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
+                    "0 0 16px 4px rgba(251,191,36,0.5), 0 0 40px 8px rgba(251,191,36,0.2)",
                   ],
                 }}
-                transition={{ duration: 1.75, repeat: Infinity }}
-              />
-              <Zap className="w-5 h-5 relative z-10" />
-              <span className="relative z-10">Simule aqui a sua poupança!</span>
-              <motion.span
-                className="inline-block relative z-10"
-                animate={{ x: [0, 5, 0] }}
-                transition={{ duration: 0.8, repeat: Infinity }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.96 }}
+                className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gold text-primary-foreground font-body font-semibold rounded-lg transition-colors duration-200 hover:bg-gold-light relative overflow-hidden"
               >
-                →
-              </motion.span>
-            </motion.button>
+                <motion.span
+                  className="absolute inset-0 rounded-lg"
+                  animate={{
+                    background: [
+                      "radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 70%)",
+                      "radial-gradient(ellipse at center, rgba(255,255,255,0.3) 0%, transparent 70%)",
+                      "radial-gradient(ellipse at center, rgba(255,255,255,0.15) 0%, transparent 70%)",
+                    ],
+                  }}
+                  transition={{ duration: 1.75, repeat: Infinity }}
+                />
+                <Zap className="w-5 h-5 relative z-10" />
+                <span className="relative z-10">Simule aqui a sua poupança!</span>
+                <motion.span
+                  className="inline-block relative z-10"
+                  animate={{ x: [0, 5, 0] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                >
+                  →
+                </motion.span>
+              </motion.button>
+              <div className="flex items-center gap-4 px-1">
+                <span className="font-body text-xs text-gold font-semibold">Até 30% de poupança</span>
+                <span className="w-1 h-1 rounded-full bg-cream-muted/40" />
+                <span className="font-body text-xs text-cream-muted">Simulação em 2 minutos</span>
+              </div>
+            </div>
             <a
               href="#services"
               className="group inline-flex items-center justify-center gap-3 px-8 py-4 glass-card font-body font-medium text-foreground rounded-lg transition-all duration-300 hover:bg-white/10"
