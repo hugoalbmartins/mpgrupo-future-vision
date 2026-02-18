@@ -41,7 +41,7 @@ const Footer = () => {
             >
               <h4 className="font-display text-lg text-foreground mb-6">Serviços</h4>
               <ul className="space-y-3">
-                {["Energia Solar", "Telecomunicações", "Energia Geral"].map(
+                {["Energia", "Telecomunicações", "Energia Solar"].map(
                   (item) => (
                     <li key={item}>
                       <a
