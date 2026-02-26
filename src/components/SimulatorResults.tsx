@@ -278,7 +278,16 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     let requerFETemp = false;
     const descricoes: string[] = [];
 
-    [descontoEletricidade, descontoGas].forEach((d) => {
+    const descontosAplicaveis: (ConfiguracaoDesconto | undefined)[] = [];
+    if (simulacao.tipo_simulacao === 'eletricidade') {
+      descontosAplicaveis.push(descontoEletricidade);
+    } else if (simulacao.tipo_simulacao === 'gas') {
+      descontosAplicaveis.push(descontoGas);
+    } else {
+      descontosAplicaveis.push(descontoEletricidade, descontoGas);
+    }
+
+    descontosAplicaveis.forEach((d) => {
       if (d && toNum(d.desconto_mensal_temporario) > 0 && d.duracao_meses_desconto > 0) {
         totalDescontoMensal += toNum(d.desconto_mensal_temporario);
         maxDuracaoMeses = Math.max(maxDuracaoMeses, d.duracao_meses_desconto);
