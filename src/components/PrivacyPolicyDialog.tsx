@@ -77,7 +77,7 @@ const PrivacyPolicyDialog = ({ open, onOpenChange }: PrivacyPolicyDialogProps) =
             <section>
               <h3 className="font-display text-lg text-foreground mb-2">7. Contacto</h3>
               <p className="leading-relaxed">
-                Para questões relacionadas com a privacidade dos seus dados, contacte-nos através de info@mpgrupo.pt ou +351 912 345 678.
+                Para questões relacionadas com a privacidade dos seus dados, contacte-nos através de info@mpgrupo.pt ou +351 928 203 793.
               </p>
             </section>
 

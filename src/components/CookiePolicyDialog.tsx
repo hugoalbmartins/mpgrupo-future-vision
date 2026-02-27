@@ -119,7 +119,7 @@ const CookiePolicyDialog = ({ open, onOpenChange }: CookiePolicyDialogProps) => 
             <section>
               <h3 className="font-display text-lg text-foreground mb-2">8. Contacto</h3>
               <p className="leading-relaxed">
-                Para questões sobre a nossa utilização de cookies, contacte-nos através de info@mpgrupo.pt ou +351 912 345 678.
+                Para questões sobre a nossa utilização de cookies, contacte-nos através de info@mpgrupo.pt ou +351 928 203 793.
               </p>
             </section>
           </div>

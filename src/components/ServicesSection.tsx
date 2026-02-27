@@ -11,6 +11,14 @@ const services = [
     hashKey: "fatura",
   },
   {
+    icon: BatteryCharging,
+    title: "Mobilidade Elétrica",
+    description: "Analisamos e fazemos proposta à medida para instalação de carregadores de viaturas elétricas para instalação em casas particulares, condomínios residenciais, restaurantes com parque de estacionamento e empresas em geral. Para uso próprio/interno ou disponível ao público em geral. O cliente decide!\nSem investimento inicial, com mensalidades atrativas. Instalação e manutenção garantida e incluídas.\nRentabilize o seu parque de estacionamento com os carregamentos efetuados.",
+    stat: "0€",
+    statLabel: "investimento inicial",
+    hashKey: "mobilidade",
+  },
+  {
     icon: Phone,
     title: "Telecomunicações",
     description: "Representamos os principais operadores nacionais. Soluções móveis, internet e TV para particulares e empresas.",
@@ -25,14 +33,6 @@ const services = [
     stat: "até 25 anos",
     statLabel: "de garantia",
     hashKey: "fatura",
-  },
-  {
-    icon: BatteryCharging,
-    title: "Mobilidade Elétrica",
-    description: "Analisamos e fazemos proposta à medida para instalação de carregadores de viaturas elétricas para instalação em casas particulares, condomínios residenciais, restaurantes com parque de estacionamento e empresas em geral. Para uso próprio/interno ou disponível ao público em geral. O cliente decide!\nSem investimento inicial, com mensalidades atrativas. Instalação e manutenção garantida e incluídas.\nRentabilize o seu parque de estacionamento com os carregamentos efetuados.",
-    stat: "0€",
-    statLabel: "investimento inicial",
-    hashKey: "mobilidade",
   },
 ];
 
@@ -58,12 +58,13 @@ const ServicesSection = () => {
   };
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 50, scale: 0.95 },
+    hidden: { opacity: 0, rotateX: -90, y: 40, scale: 0.92 },
     visible: {
       opacity: 1,
+      rotateX: 0,
       y: 0,
       scale: 1,
-      transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] as const },
+      transition: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] as const },
     },
   };
 
@@ -106,6 +107,7 @@ const ServicesSection = () => {
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
           className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-24"
+          style={{ perspective: 1200 }}
         >
           {services.map((service) => (
             <motion.div
@@ -113,6 +115,7 @@ const ServicesSection = () => {
               variants={cardVariants}
               whileHover={{ y: -8, transition: { duration: 0.3 } }}
               className="group"
+              style={{ transformOrigin: "center top", transformStyle: "preserve-3d" }}
             >
               <div className="glass-card h-full p-8 transition-all duration-500 group-hover:border-gold/30 group-hover:shadow-[0_0_40px_rgba(212,175,55,0.1)]">
                 {/* Icon */}
