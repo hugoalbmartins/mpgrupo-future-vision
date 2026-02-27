@@ -9,6 +9,7 @@ const SUBJECT_VALUES = [
   "Parceria",
   "Candidatura Espontânea",
   "Análise da minha fatura (Energias ou telecomunicações)",
+  "Mobilidade Elétrica",
 ] as const;
 
 type SubjectValue = typeof SUBJECT_VALUES[number];
@@ -27,6 +28,7 @@ const subjects: { value: SubjectValue; label: string; icon: string; hashKey: str
   { value: "Parceria", label: "Parceria Comercial", icon: "\u{1F91D}", hashKey: "parceria" },
   { value: "Candidatura Espontânea", label: "Candidatura Espontânea", icon: "\u{1F4BC}", hashKey: "candidatura" },
   { value: "Análise da minha fatura (Energias ou telecomunicações)", label: "Análise da Minha Fatura (Energias ou telecomunicações)", icon: "\u{1F4CA}", hashKey: "fatura" },
+  { value: "Mobilidade Elétrica", label: "Mobilidade Elétrica", icon: "\u{26A1}", hashKey: "mobilidade" },
 ];
 
 interface ContactFormProps {

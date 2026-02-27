@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Phone, Zap, Sun, Award, TrendingUp, Shield, ArrowRight } from "lucide-react";
+import { Phone, Zap, Sun, Award, TrendingUp, Shield, ArrowRight, BatteryCharging } from "lucide-react";
 
 const services = [
   {
@@ -22,6 +22,13 @@ const services = [
     description: "Soluções fotovoltaicas personalizadas para residências e empresas. Reduza a fatura e aumente o valor do seu imóvel.",
     stat: "até 25 anos",
     statLabel: "de garantia",
+  },
+  {
+    icon: BatteryCharging,
+    title: "Mobilidade Elétrica",
+    description: "Analisamos e fazemos proposta à medida para instalação de carregadores de viaturas elétricas para instalação em casas particulares, condomínios residenciais, restaurantes com parque de estacionamento e empresas em geral. Para uso próprio/interno ou disponível ao público em geral. O cliente decide!\nSem investimento inicial, com mensalidades atrativas. Instalação e manutenção garantida e incluídas.\nRentabilize o seu parque de estacionamento com os carregamentos efetuados.",
+    stat: "0€",
+    statLabel: "investimento inicial",
   },
 ];
 
@@ -94,7 +101,7 @@ const ServicesSection = () => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-24"
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-24"
         >
           {services.map((service) => (
             <motion.div
@@ -113,7 +120,7 @@ const ServicesSection = () => {
                 <h3 className="font-display text-2xl text-foreground mb-3 group-hover:text-gold transition-colors duration-300">
                   {service.title}
                 </h3>
-                <p className="font-body text-cream-muted leading-relaxed mb-6">
+                <p className="font-body text-cream-muted leading-relaxed mb-6 whitespace-pre-line">
                   {service.description}
                 </p>
 
