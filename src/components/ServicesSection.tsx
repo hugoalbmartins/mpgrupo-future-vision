@@ -8,6 +8,7 @@ const services = [
     description: "Otimize os seus custos energéticos. Comparamos tarifas e encontramos a melhor solução para o seu perfil de consumo.",
     stat: "30%",
     statLabel: "poupança média",
+    hashKey: "fatura",
   },
   {
     icon: Phone,
@@ -15,6 +16,7 @@ const services = [
     description: "Representamos os principais operadores nacionais. Soluções móveis, internet e TV para particulares e empresas.",
     stat: "20+ anos",
     statLabel: "de experiência",
+    hashKey: "fatura",
   },
   {
     icon: Sun,
@@ -22,6 +24,7 @@ const services = [
     description: "Soluções fotovoltaicas personalizadas para residências e empresas. Reduza a fatura e aumente o valor do seu imóvel.",
     stat: "até 25 anos",
     statLabel: "de garantia",
+    hashKey: "fatura",
   },
   {
     icon: BatteryCharging,
@@ -29,6 +32,7 @@ const services = [
     description: "Analisamos e fazemos proposta à medida para instalação de carregadores de viaturas elétricas para instalação em casas particulares, condomínios residenciais, restaurantes com parque de estacionamento e empresas em geral. Para uso próprio/interno ou disponível ao público em geral. O cliente decide!\nSem investimento inicial, com mensalidades atrativas. Instalação e manutenção garantida e incluídas.\nRentabilize o seu parque de estacionamento com os carregamentos efetuados.",
     stat: "0€",
     statLabel: "investimento inicial",
+    hashKey: "mobilidade",
   },
 ];
 
@@ -38,9 +42,9 @@ const achievements = [
   { icon: Shield, value: "100%", label: "Compromisso e Transparência" },
 ];
 
-const scrollToContactFatura = (e: React.MouseEvent) => {
+const scrollToContact = (e: React.MouseEvent, hashKey: string) => {
   e.preventDefault();
-  window.location.hash = '#contact-fatura';
+  window.location.hash = `#contact-${hashKey}`;
   document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
 };
 
@@ -131,8 +135,8 @@ const ServicesSection = () => {
                 </div>
 
                 <a
-                  href="#contact-fatura"
-                  onClick={scrollToContactFatura}
+                  href={`#contact-${service.hashKey}`}
+                  onClick={(e) => scrollToContact(e, service.hashKey)}
                   className="inline-flex items-center gap-1.5 mt-5 font-body text-sm text-gold hover:text-gold-light transition-colors duration-300 group/link"
                 >
                   + Informações

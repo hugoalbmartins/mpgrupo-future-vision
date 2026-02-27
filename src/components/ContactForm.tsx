@@ -48,6 +48,7 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>("");
+  const [morada, setMorada] = useState<string>("");
   const hasAutoAdvanced = useRef(false);
   const [formData, setFormData] = useState<Partial<FormData>>({
     name: "",
@@ -192,7 +193,7 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
         potencia: simulationData?.potencia,
         poupanca_estimada: simulationData?.poupanca_estimada,
         dados_simulacao: simulationData?.dados_completos || null,
-        mensagem: `Assunto: ${formData.subject}\n\n${formData.message || ''}`,
+        mensagem: `Assunto: ${formData.subject}\n\n${formData.message || ''}${morada ? `\n\nMorada: ${morada}` : ''}`,
         origem: simulationData ? 'simulador' : 'web',
         estado: 'novo',
         anexo_nome: uploadedFile?.name || null,
@@ -205,7 +206,7 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
         email: formData.email,
         phone: formData.phone,
         subject: formData.subject,
-        message: formData.message || '',
+        message: `${formData.message || ''}${morada ? `\n\nMorada: ${morada}` : ''}`,
         attachment: fileData,
         simulationData: simulationData ? {
           operadora_atual: simulationData.operadora_atual,
@@ -484,24 +485,46 @@ const ContactForm = ({ simulationData }: ContactFormProps = {}) => {
                     )}
 
                     <h3 className="font-display text-2xl text-foreground mb-6">
-                      Mensagem Adicional
+                      {formData.subject === "Mobilidade Elétrica" ? "Detalhes do Pedido" : "Mensagem Adicional"}
                     </h3>
 
                     <div>
                       <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
                         <MessageSquare className="w-4 h-4 text-gold" strokeWidth={1.5} />
-                        Conte-nos mais (opcional)
+                        {formData.subject === "Mobilidade Elétrica"
+                          ? "Descreva brevemente o que pretende (opcional)"
+                          : "Conte-nos mais (opcional)"}
                       </label>
                       <textarea
                         value={formData.message}
                         onChange={(e) => updateField("message", e.target.value)}
-                        rows={5}
+                        rows={4}
                         className="w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all resize-none"
-                        placeholder="Descreva brevemente o que procura..."
+                        placeholder={
+                          formData.subject === "Mobilidade Elétrica"
+                            ? "Ex: pretendo instalar 2 carregadores para uso privado num condomínio..."
+                            : "Descreva brevemente o que procura..."
+                        }
                       />
                     </div>
 
-                    {formData.subject !== "Parceria" && (
+                    {formData.subject === "Mobilidade Elétrica" && (
+                      <div>
+                        <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
+                          <MessageSquare className="w-4 h-4 text-gold" strokeWidth={1.5} />
+                          Morada da instalação (opcional)
+                        </label>
+                        <textarea
+                          value={morada}
+                          onChange={(e) => setMorada(e.target.value)}
+                          rows={2}
+                          className="w-full px-4 py-3 bg-muted border border-border rounded-lg font-body text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 transition-all resize-none"
+                          placeholder="Rua, número, localidade, código postal..."
+                        />
+                      </div>
+                    )}
+
+                    {formData.subject !== "Parceria" && formData.subject !== "Mobilidade Elétrica" && (
                       <div>
                         <label className="flex items-center gap-2 font-body text-sm text-cream-muted mb-2">
                           <Upload className="w-4 h-4 text-gold" strokeWidth={1.5} />
