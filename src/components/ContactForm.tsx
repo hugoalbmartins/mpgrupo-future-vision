@@ -25,10 +25,10 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const subjects: { value: SubjectValue; label: string; icon: string; hashKey: string }[] = [
-  { value: "Parceria", label: "Parceria Comercial", icon: "\u{1F91D}", hashKey: "parceria" },
-  { value: "Candidatura Espontânea", label: "Candidatura Espontânea", icon: "\u{1F4BC}", hashKey: "candidatura" },
   { value: "Análise da minha fatura (Energias ou telecomunicações)", label: "Análise da Minha Fatura (Energias ou telecomunicações)", icon: "\u{1F4CA}", hashKey: "fatura" },
   { value: "Mobilidade Elétrica", label: "Mobilidade Elétrica", icon: "\u{26A1}", hashKey: "mobilidade" },
+  { value: "Parceria", label: "Parceria Comercial", icon: "\u{1F91D}", hashKey: "parceria" },
+  { value: "Candidatura Espontânea", label: "Candidatura Espontânea", icon: "\u{1F4BC}", hashKey: "candidatura" },
 ];
 
 interface ContactFormProps {
