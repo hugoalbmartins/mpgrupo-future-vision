@@ -83,7 +83,11 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
         if (resultado) resultadosCalculados.push(resultado);
       }
 
-      resultadosCalculados.sort((a, b) => b.poupanca - a.poupanca);
+      resultadosCalculados.sort((a, b) => {
+        const poupancaEfetivaA = (a.poupanca / simulacao.dias_fatura) * 30 + (a.desconto_temporario?.valor_mensal || 0);
+        const poupancaEfetivaB = (b.poupanca / simulacao.dias_fatura) * 30 + (b.desconto_temporario?.valor_mensal || 0);
+        return poupancaEfetivaB - poupancaEfetivaA;
+      });
       setResultados(resultadosCalculados.slice(0, 3));
     } catch (error) {
       toast.error('Erro ao calcular resultados');
@@ -568,9 +572,20 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                                   </span>
                                 )}
                               </div>
-                              <span className="font-body text-xs text-cream-muted">
-                                Novo custo: {fmtEur(custoMensal)}/mês
-                              </span>
+                              {dt ? (
+                                <div className="space-y-0.5">
+                                  <div className="font-body text-xs text-green-600 dark:text-green-400 font-semibold">
+                                    c/ Campanha ({dt.duracao_meses} meses): {fmtEur(dt.custo_mensal_com_desconto)}/mês
+                                  </div>
+                                  <div className="font-body text-xs text-cream-muted">
+                                    Após campanha: {fmtEur(custoMensal)}/mês
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="font-body text-xs text-cream-muted">
+                                  Novo custo: {fmtEur(custoMensal)}/mês
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
