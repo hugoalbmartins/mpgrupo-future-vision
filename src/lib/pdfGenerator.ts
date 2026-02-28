@@ -13,353 +13,478 @@ interface PDFData {
   };
 }
 
-const MPGRUPO_LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+const darkBlue: [number, number, number] = [30, 58, 95];
+const green: [number, number, number] = [34, 139, 34];
+const orange: [number, number, number] = [230, 126, 34];
+const textDark: [number, number, number] = [33, 33, 33];
+const textMuted: [number, number, number] = [100, 100, 100];
+const white: [number, number, number] = [255, 255, 255];
+const lightGray: [number, number, number] = [245, 247, 250];
+const borderGray: [number, number, number] = [200, 210, 220];
+const greenLight: [number, number, number] = [235, 255, 235];
+const orangeLight: [number, number, number] = [255, 248, 235];
+
+const fmt = (val: number, dec = 2) =>
+  val.toLocaleString('pt-PT', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+const fmtEur = (val: number, dec = 2) => `${fmt(val, dec)} €`;
 
 export const generateSimulationPDF = (data: PDFData): void => {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  let yPosition = margin;
+  const margin = 15;
+  const contentWidth = pageWidth - 2 * margin;
+  let y = margin;
 
-  const primaryColor = [139, 115, 85] as [number, number, number];
-  const goldColor = [212, 175, 55] as [number, number, number];
-  const textColor = [51, 51, 51] as [number, number, number];
-  const lightGray = [245, 245, 245] as [number, number, number];
-  const greenColor = [34, 139, 34] as [number, number, number];
-  const redColor = [220, 38, 38] as [number, number, number];
-
-  doc.setTextColor(...textColor);
-
-  doc.setFillColor(...goldColor);
-  doc.rect(0, 0, pageWidth, 45, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(28);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MPGrupo', pageWidth / 2, 22, { align: 'center' });
-
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Relatório de Simulação Energética', pageWidth / 2, 35, { align: 'center' });
-
-  yPosition = 55;
-
-  const addSection = (title: string, yStart: number): number => {
-    doc.setFillColor(...goldColor);
-    doc.rect(margin, yStart, pageWidth - 2 * margin, 8, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, margin + 3, yStart + 6);
-
-    doc.setTextColor(...textColor);
-    return yStart + 15;
+  const checkPage = (needed: number) => {
+    if (y + needed > pageHeight - 25) {
+      doc.addPage();
+      y = margin;
+    }
   };
 
-  yPosition = addSection('Dados da Simulação', yPosition);
+  const drawHeader = () => {
+    const consultorNome = data.userInfo?.nome || 'MP Grupo';
+    const consultorEmail = data.userInfo?.email || 'info@mpgrupo.pt';
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+    doc.setFillColor(...darkBlue);
+    doc.rect(0, 0, pageWidth, 1, 'F');
 
-  const addInfoLine = (label: string, value: string, y: number): number => {
+    doc.setTextColor(...darkBlue);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${label}:`, margin + 5, y);
+    doc.text(consultorNome, margin, y + 8);
+
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(value, margin + 60, y);
-    return y + 6;
+    doc.setTextColor(...textMuted);
+    doc.text('O seu comercial de energias.', margin, y + 14);
+
+    doc.setTextColor(...darkBlue);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Simulação de Energia', pageWidth - margin, y + 8, { align: 'right' });
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textMuted);
+    doc.text(`Data: ${data.dataGeracao.toLocaleDateString('pt-PT')}`, pageWidth - margin, y + 14, { align: 'right' });
+
+    y += 18;
+
+    doc.setDrawColor(...darkBlue);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
   };
 
-  if (data.userInfo) {
-    yPosition = addInfoLine('Consultor', data.userInfo.nome, yPosition);
-    if (data.userInfo.telefone) yPosition = addInfoLine('Telefone', data.userInfo.telefone, yPosition);
-    if (data.userInfo.email) yPosition = addInfoLine('Email', data.userInfo.email, yPosition);
-    yPosition += 3;
-  }
-  yPosition = addInfoLine('Data do Relatório', data.dataGeracao.toLocaleDateString('pt-PT'), yPosition);
-  yPosition = addInfoLine('Operadora Atual', data.simulacao.operadora_atual, yPosition);
-  yPosition = addInfoLine('Potência Contratada', `${data.simulacao.potencia} kVA`, yPosition);
-  yPosition = addInfoLine('Valor Potência Diária', `€${data.simulacao.valor_potencia_diaria_atual.toFixed(4)}`, yPosition);
-  yPosition = addInfoLine('Dias de Fatura', `${data.simulacao.dias_fatura} dias`, yPosition);
-  yPosition = addInfoLine('Ciclo Horário', data.simulacao.ciclo_horario.charAt(0).toUpperCase() + data.simulacao.ciclo_horario.slice(1), yPosition);
+  const drawFooter = (pageNum: number, totalPages: number) => {
+    const consultorNome = data.userInfo?.nome || 'MP Grupo';
+    const consultorEmail = data.userInfo?.email || 'info@mpgrupo.pt';
+    const fy = pageHeight - 18;
 
-  if (data.simulacao.ciclo_horario === 'simples' && data.simulacao.kwh_simples) {
-    yPosition = addInfoLine('Consumo', `${data.simulacao.kwh_simples.toFixed(2)} kWh`, yPosition);
-    yPosition = addInfoLine('Preço kWh', `€${data.simulacao.preco_simples?.toFixed(6)}`, yPosition);
-  } else if (data.simulacao.ciclo_horario === 'bi-horario') {
-    if (data.simulacao.kwh_vazio) {
-      yPosition = addInfoLine('Consumo Vazio', `${data.simulacao.kwh_vazio.toFixed(2)} kWh`, yPosition);
-    }
-    if (data.simulacao.kwh_fora_vazio) {
-      yPosition = addInfoLine('Consumo Fora Vazio', `${data.simulacao.kwh_fora_vazio.toFixed(2)} kWh`, yPosition);
-    }
-  } else if (data.simulacao.ciclo_horario === 'tri-horario') {
-    if (data.simulacao.kwh_vazio) {
-      yPosition = addInfoLine('Consumo Vazio', `${data.simulacao.kwh_vazio.toFixed(2)} kWh`, yPosition);
-    }
-    if (data.simulacao.kwh_ponta) {
-      yPosition = addInfoLine('Consumo Ponta', `${data.simulacao.kwh_ponta.toFixed(2)} kWh`, yPosition);
-    }
-    if (data.simulacao.kwh_cheias) {
-      yPosition = addInfoLine('Consumo Cheias', `${data.simulacao.kwh_cheias.toFixed(2)} kWh`, yPosition);
-    }
-  }
+    doc.setDrawColor(...borderGray);
+    doc.setLineWidth(0.3);
+    doc.line(margin, fy - 2, pageWidth - margin, fy - 2);
 
-  yPosition += 5;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...darkBlue);
+    doc.text(`${consultorNome} — Comparador de Energia`, margin, fy + 3);
 
-  doc.setFillColor(...lightGray);
-  doc.rect(margin, yPosition, pageWidth - 2 * margin, 15, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...textMuted);
+    doc.text(`Contacto: ${consultorEmail}`, margin, fy + 8);
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...primaryColor);
-  doc.text('Custo Atual (Fatura):', margin + 5, yPosition + 6);
+    doc.text(`${pageNum} / ${totalPages}`, pageWidth - margin, fy + 5, { align: 'right' });
+  };
 
-  doc.setFontSize(14);
-  doc.setTextColor(...goldColor);
-  doc.text(`€${data.custoAtual.toFixed(2)}`, margin + 5, yPosition + 12);
+  const drawSectionTitle = (title: string) => {
+    checkPage(12);
+    doc.setFillColor(...darkBlue);
+    doc.rect(margin, y, contentWidth, 8, 'F');
+    doc.setTextColor(...white);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, margin + 3, y + 5.5);
+    y += 12;
+  };
 
-  yPosition += 25;
+  const drawInfoRow = (label: string, value: string, bold = false) => {
+    doc.setFontSize(9);
+    doc.setTextColor(...textMuted);
+    doc.setFont('helvetica', 'normal');
+    doc.text(label + ':', margin + 4, y);
+    doc.setTextColor(...textDark);
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.text(value, margin + 70, y);
+    y += 5.5;
+  };
 
-  if (yPosition > pageHeight - 100) {
-    doc.addPage();
-    yPosition = margin;
-  }
+  drawHeader();
 
-  yPosition = addSection('Comparação de Operadoras', yPosition);
+  drawSectionTitle('Dados do Consumo Atual');
+
+  const cicloLabel = {
+    'simples': 'Simples',
+    'bi-horario': 'Bi-Horário',
+    'tri-horario': 'Tri-Horário',
+  }[data.simulacao.ciclo_horario];
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textColor);
+  doc.setTextColor(...textMuted);
+  doc.text(`Tipo de Energia: ${data.simulacao.tipo_simulacao.charAt(0).toUpperCase() + data.simulacao.tipo_simulacao.slice(1)}`, margin + 4, y);
+  y += 5.5;
 
-  const topResults = data.resultados;
+  if (data.simulacao.tipo_simulacao !== 'gas') {
+    const custoElet = data.simulacao.tipo_simulacao === 'dual'
+      ? data.custoAtual - ((data.simulacao.gas_valor_diario_atual || 0) * data.simulacao.dias_fatura + (data.simulacao.gas_kwh || 0) * (data.simulacao.gas_preco_kwh || 0))
+      : data.custoAtual;
+    doc.setTextColor(...textMuted);
+    doc.text(`Custo Mensal Eletricidade: ${fmtEur(custoElet)}`, margin + 6, y);
+    y += 5.5;
+  }
 
-  for (let i = 0; i < topResults.length; i++) {
-    const resultado = topResults[i];
+  if (data.simulacao.tipo_simulacao === 'gas' || data.simulacao.tipo_simulacao === 'dual') {
+    const custoGas = (data.simulacao.gas_valor_diario_atual || 0) * data.simulacao.dias_fatura + (data.simulacao.gas_kwh || 0) * (data.simulacao.gas_preco_kwh || 0);
+    doc.setTextColor(...textMuted);
+    doc.text(`Custo Mensal Gás: ${fmtEur(custoGas)}`, margin + 6, y);
+    y += 5.5;
+  }
 
-    if (yPosition > pageHeight - 40) {
-      doc.addPage();
-      yPosition = margin;
-    }
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...textDark);
+  doc.setFontSize(10);
+  doc.text(`Custo Total Mensal Atual: ${fmtEur(data.custoAtual)}`, margin + 4, y);
+  y += 7;
 
-    const isTopSaving = i === 0 && resultado.poupanca > 0;
+  const detalhes: string[] = [];
+  if (data.simulacao.tipo_simulacao !== 'gas') {
+    detalhes.push(`Potência: ${data.simulacao.potencia} kW`);
+    detalhes.push(`Ciclo: ${cicloLabel}`);
+    detalhes.push(`Dias: ${data.simulacao.dias_fatura}`);
+  }
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...textMuted);
+  doc.text(detalhes.join('   |   '), margin + 4, y);
+  y += 5.5;
 
-    if (isTopSaving) {
-      doc.setFillColor(240, 255, 240);
-    } else {
-      doc.setFillColor(i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 250);
-    }
-    doc.rect(margin, yPosition, pageWidth - 2 * margin, 25, 'F');
+  const consumos: string[] = [];
+  if (data.simulacao.ciclo_horario === 'simples' && data.simulacao.kwh_simples) {
+    consumos.push(`Simples: ${fmt(data.simulacao.kwh_simples)} kWh`);
+  } else if (data.simulacao.ciclo_horario === 'bi-horario') {
+    if (data.simulacao.kwh_vazio) consumos.push(`Vazio: ${fmt(data.simulacao.kwh_vazio)} kWh`);
+    if (data.simulacao.kwh_fora_vazio) consumos.push(`Fora Vazio: ${fmt(data.simulacao.kwh_fora_vazio)} kWh`);
+  } else if (data.simulacao.ciclo_horario === 'tri-horario') {
+    if (data.simulacao.kwh_vazio) consumos.push(`Vazio: ${fmt(data.simulacao.kwh_vazio)} kWh`);
+    if (data.simulacao.kwh_ponta) consumos.push(`Ponta: ${fmt(data.simulacao.kwh_ponta)} kWh`);
+    if (data.simulacao.kwh_cheias) consumos.push(`Cheias: ${fmt(data.simulacao.kwh_cheias)} kWh`);
+  }
+  if (consumos.length > 0) {
+    doc.text(`Consumos: ${consumos.join('   ')}`, margin + 4, y);
+    y += 5.5;
+  }
 
-    doc.setFont('helvetica', 'bold');
+  y += 4;
+
+  for (let i = 0; i < data.resultados.length; i++) {
+    const resultado = data.resultados[i];
+    const isBest = i === 0 && resultado.poupanca > 0;
+    const dt = resultado.desconto_temporario;
+
+    checkPage(60);
+
+    const blockHeaderColor: [number, number, number] = isBest ? [34, 120, 60] : [50, 80, 130];
+
+    doc.setFillColor(...blockHeaderColor);
+    doc.rect(margin, y, contentWidth, 10, 'F');
+
+    doc.setTextColor(...white);
     doc.setFontSize(11);
-    doc.setTextColor(...primaryColor);
-    doc.text(`${i + 1}. ${resultado.operadora.nome}`, margin + 3, yPosition + 6);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...textColor);
-
-    const col1X = margin + 3;
-    const col2X = margin + (pageWidth - 2 * margin) / 2;
-
-    doc.text(`Potência: €${resultado.custo_total_potencia.toFixed(2)}`, col1X, yPosition + 12);
-    doc.text(`Energia: €${resultado.custo_total_energia.toFixed(2)}`, col1X, yPosition + 17);
-
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total: €${resultado.subtotal.toFixed(2)}`, col2X, yPosition + 12);
+    const titleText = `${i + 1}. ${resultado.operadora.nome}`;
+    doc.text(titleText, margin + 3, y + 6.5);
 
-    if (resultado.poupanca > 0) {
-      doc.setTextColor(...greenColor);
-      doc.text(`Poupança: €${resultado.poupanca.toFixed(2)}`, col2X, yPosition + 17);
-    } else if (resultado.poupanca < 0) {
-      doc.setTextColor(...redColor);
-      doc.text(`Custo adicional: €${Math.abs(resultado.poupanca).toFixed(2)}`, col2X, yPosition + 17);
-    } else {
-      doc.setTextColor(...textColor);
-      doc.text(`Igual ao atual`, col2X, yPosition + 17);
+    if (isBest) {
+      const badgeText = 'Melhor Opção';
+      doc.setFontSize(8);
+      const badgeW = doc.getTextWidth(badgeText) + 4;
+      const badgeX = margin + 3 + doc.getTextWidth(titleText) + 4;
+      doc.setFillColor(255, 230, 0);
+      doc.rect(badgeX, y + 2, badgeW, 6, 'F');
+      doc.setTextColor(...textDark);
+      doc.text(badgeText, badgeX + 2, y + 6.5);
     }
 
-    doc.setTextColor(...textColor);
-    doc.setFont('helvetica', 'normal');
-
-    yPosition += 27;
-  }
-
-  yPosition += 5;
-
-  if (yPosition > pageHeight - 60) {
-    doc.addPage();
-    yPosition = margin;
-  }
-
-  yPosition = addSection('Projeção Anual', yPosition);
-
-  const melhorOpcao = data.resultados[0];
-  if (melhorOpcao && melhorOpcao.poupanca > 0) {
-    const poupancaMensal = (melhorOpcao.poupanca / data.simulacao.dias_fatura) * 30;
+    const custoMensal = (resultado.subtotal / data.simulacao.dias_fatura) * 30;
+    const poupancaMensal = (resultado.poupanca / data.simulacao.dias_fatura) * 30;
     const poupancaAnual = poupancaMensal * 12;
 
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Mudando para ${melhorOpcao.operadora.nome}, pode poupar aproximadamente:`, margin + 5, yPosition);
+    doc.setTextColor(...white);
+    doc.text(`Custo Mensal: ${fmtEur(custoMensal)}`, pageWidth - margin - 3, y + 6.5, { align: 'right' });
+    y += 14;
 
-    yPosition += 10;
-    doc.setFillColor(240, 255, 240);
-    doc.rect(margin, yPosition, pageWidth - 2 * margin, 20, 'F');
-
+    doc.setFillColor(...lightGray);
+    doc.rect(margin, y, contentWidth, 7, 'F');
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(...goldColor);
-    doc.text(`€${poupancaAnual.toFixed(2)} / ano`, pageWidth / 2, yPosition + 13, { align: 'center' });
-
-    yPosition += 25;
-  }
-
-  const resultadosComAlertaDDFE = data.resultados.filter((r) => {
-    if (!r.poupanca_potencial_dd_fe || r.poupanca_potencial_dd_fe <= 0) return false;
-    const poupancaTotalComDDFE = data.custoAtual - (r.subtotal - r.poupanca_potencial_dd_fe);
-    return poupancaTotalComDDFE > 0;
-  });
-
-  if (resultadosComAlertaDDFE.length > 0) {
-    if (yPosition > pageHeight - 60) {
-      doc.addPage();
-      yPosition = margin;
+    doc.setTextColor(...textDark);
+    if (resultado.poupanca > 0) {
+      doc.text(`Poupança Mensal: ${fmtEur(poupancaMensal)}`, margin + 4, y + 5);
+      doc.setTextColor(...green);
+      doc.text(`Poupança Anual: ${fmtEur(poupancaAnual)}`, pageWidth - margin - 4, y + 5, { align: 'right' });
+    } else {
+      doc.setTextColor(...textMuted);
+      doc.text('Sem poupança face à operadora atual', margin + 4, y + 5);
     }
+    y += 11;
 
-    yPosition = addSection('Poupança Adicional com Débito Direto e Fatura Eletrónica', yPosition);
+    if (data.simulacao.tipo_simulacao !== 'gas') {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...textDark);
+      doc.text('Eletricidade — Detalhe de Preços e Custos', margin + 2, y);
+      y += 6;
 
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...textColor);
+      const colW = [42, 28, 28, 25, 25];
+      const colX = [margin + 2, margin + 44, margin + 72, margin + 100, margin + 125];
+      const headers = ['Componente', 'Preço Unit.', 'Preço c/ Desc.', 'Total s/ Desc.', 'Total c/ Desc.'];
 
-    for (const resultado of resultadosComAlertaDDFE) {
-      if (yPosition > pageHeight - 30) {
-        doc.addPage();
-        yPosition = margin;
+      doc.setFillColor(230, 236, 245);
+      doc.rect(margin, y, contentWidth, 6, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...darkBlue);
+      headers.forEach((h, idx) => {
+        doc.text(h, colX[idx], y + 4.5);
+      });
+      y += 7;
+
+      const rawPotUnitAtual = data.simulacao.valor_potencia_diaria_atual;
+      const rawPotUnitDesc = resultado.valor_potencia_diaria;
+      const rawPotTotalAtual = rawPotUnitAtual * data.simulacao.dias_fatura;
+      const rawPotTotalDesc = resultado.custo_total_potencia;
+
+      const addTableRow = (
+        comp: string,
+        unit: string,
+        unitLabel: string,
+        precoUnit: number,
+        precoDesc: number,
+        totalSemDesc: number,
+        totalComDesc: number,
+        descontoPct: number,
+        rowIndex: number,
+        subLabel?: string
+      ) => {
+        checkPage(18);
+        if (rowIndex % 2 === 0) {
+          doc.setFillColor(252, 252, 252);
+        } else {
+          doc.setFillColor(...white);
+        }
+        doc.rect(margin, y, contentWidth, descontoPct > 0 ? 12 : 8, 'F');
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...textDark);
+        doc.text(comp, colX[0], y + 4);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...textMuted);
+        doc.text(`(${unit})`, colX[0], y + 7.5);
+
+        doc.setTextColor(...textDark);
+        doc.setFontSize(8);
+        doc.text(fmtEur(precoUnit, 6), colX[1], y + 4);
+
+        doc.setTextColor(...green);
+        doc.setFont('helvetica', 'bold');
+        doc.text(fmtEur(precoDesc, 6), colX[2], y + 4);
+
+        doc.setTextColor(...textDark);
+        doc.setFont('helvetica', 'normal');
+        doc.text(fmtEur(totalSemDesc), colX[3], y + 4);
+
+        doc.setTextColor(...green);
+        doc.setFont('helvetica', 'bold');
+        doc.text(fmtEur(totalComDesc), colX[4], y + 4);
+
+        if (descontoPct > 0) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.setTextColor(...textMuted);
+          doc.text(`Desconto aplicado: ${fmt(descontoPct, 0)}%`, colX[0], y + 10);
+        }
+
+        y += descontoPct > 0 ? 13 : 9;
+      };
+
+      let potDescontoPct = 0;
+      if (rawPotUnitAtual > 0 && rawPotUnitDesc < rawPotUnitAtual) {
+        potDescontoPct = ((rawPotUnitAtual - rawPotUnitDesc) / rawPotUnitAtual) * 100;
       }
 
-      const poupancaTotalComDDFE = data.custoAtual - (resultado.subtotal - resultado.poupanca_potencial_dd_fe!);
-      const poupancaAnualComDDFE = poupancaTotalComDDFE * 12;
+      addTableRow(
+        'Potência',
+        '€/kW/dia',
+        '',
+        rawPotUnitAtual,
+        rawPotUnitDesc,
+        rawPotTotalAtual,
+        rawPotTotalDesc,
+        potDescontoPct,
+        0
+      );
 
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${resultado.operadora.nome}:`, margin + 5, yPosition);
-
-      doc.setFont('helvetica', 'normal');
-      yPosition += 5;
-      doc.text(`Caso aderisse com Débito Direto e Fatura Eletrónica, a poupança total`, margin + 5, yPosition);
-      yPosition += 4;
-      doc.text(`em relação à fatura atual seria de `, margin + 5, yPosition);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 102, 204);
-      doc.text(`€${poupancaTotalComDDFE.toFixed(2)}`, margin + 70, yPosition);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...textColor);
-      doc.text(` por mês`, margin + 95, yPosition);
-
-      yPosition += 5;
-      doc.text(`Projeção anual: `, margin + 5, yPosition);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 102, 204);
-      doc.text(`€${poupancaAnualComDDFE.toFixed(2)}`, margin + 35, yPosition);
-
-      doc.setTextColor(...textColor);
-      doc.setFont('helvetica', 'normal');
-
-      yPosition += 10;
-    }
-  }
-
-  const resultadosComCampanha = data.resultados.filter((r) => r.desconto_temporario);
-
-  if (resultadosComCampanha.length > 0) {
-    if (yPosition > pageHeight - 60) {
-      doc.addPage();
-      yPosition = margin;
-    }
-
-    yPosition = addSection('Campanhas Adicionais', yPosition);
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...textColor);
-
-    for (const resultado of resultadosComCampanha) {
-      if (yPosition > pageHeight - 40) {
-        doc.addPage();
-        yPosition = margin;
+      if (data.simulacao.ciclo_horario === 'simples') {
+        const kwhSimples = data.simulacao.kwh_simples || 0;
+        const precoAtual = data.simulacao.preco_simples || 0;
+        const precoDesc = resultado.valores_kwh.simples || 0;
+        const totalAtual = kwhSimples * precoAtual;
+        const totalDesc = resultado.custos_energia.simples || 0;
+        let eneDesc = 0;
+        if (precoAtual > 0 && precoDesc < precoAtual) eneDesc = ((precoAtual - precoDesc) / precoAtual) * 100;
+        addTableRow('Energia', '€/kWh', '', precoAtual, precoDesc, totalAtual, totalDesc, eneDesc, 1);
+      } else if (data.simulacao.ciclo_horario === 'bi-horario') {
+        const kwhV = data.simulacao.kwh_vazio || 0;
+        const kwhFV = data.simulacao.kwh_fora_vazio || 0;
+        const pV = data.simulacao.preco_vazio || 0;
+        const pFV = data.simulacao.preco_fora_vazio || 0;
+        const pVd = resultado.valores_kwh.vazio || 0;
+        const pFVd = resultado.valores_kwh.fora_vazio || 0;
+        let descV = 0, descFV = 0;
+        if (pV > 0 && pVd < pV) descV = ((pV - pVd) / pV) * 100;
+        if (pFV > 0 && pFVd < pFV) descFV = ((pFV - pFVd) / pFV) * 100;
+        addTableRow('Energia Vazio', '€/kWh', '', pV, pVd, kwhV * pV, resultado.custos_energia.vazio || 0, descV, 1);
+        addTableRow('Energia Fora Vazio', '€/kWh', '', pFV, pFVd, kwhFV * pFV, resultado.custos_energia.fora_vazio || 0, descFV, 2);
+      } else if (data.simulacao.ciclo_horario === 'tri-horario') {
+        const kwhV = data.simulacao.kwh_vazio || 0;
+        const kwhP = data.simulacao.kwh_ponta || 0;
+        const kwhC = data.simulacao.kwh_cheias || 0;
+        const pV = data.simulacao.preco_vazio || 0;
+        const pP = data.simulacao.preco_ponta || 0;
+        const pC = data.simulacao.preco_cheias || 0;
+        const pVd = resultado.valores_kwh.vazio || 0;
+        const pPd = resultado.valores_kwh.ponta || 0;
+        const pCd = resultado.valores_kwh.cheias || 0;
+        let descV = 0, descP = 0, descC = 0;
+        if (pV > 0 && pVd < pV) descV = ((pV - pVd) / pV) * 100;
+        if (pP > 0 && pPd < pP) descP = ((pP - pPd) / pP) * 100;
+        if (pC > 0 && pCd < pC) descC = ((pC - pCd) / pC) * 100;
+        addTableRow('Energia Vazio', '€/kWh', '', pV, pVd, kwhV * pV, resultado.custos_energia.vazio || 0, descV, 1);
+        addTableRow('Energia Ponta', '€/kWh', '', pP, pPd, kwhP * pP, resultado.custos_energia.ponta || 0, descP, 2);
+        addTableRow('Energia Cheias', '€/kWh', '', pC, pCd, kwhC * pC, resultado.custos_energia.cheias || 0, descC, 3);
       }
 
-      const dt = resultado.desconto_temporario!;
+      const custoAtualElet = data.simulacao.tipo_simulacao === 'dual'
+        ? data.custoAtual - ((data.simulacao.gas_valor_diario_atual || 0) * data.simulacao.dias_fatura + (data.simulacao.gas_kwh || 0) * (data.simulacao.gas_preco_kwh || 0))
+        : data.custoAtual;
 
+      doc.setFillColor(230, 236, 245);
+      doc.rect(margin, y, contentWidth, 7, 'F');
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${resultado.operadora.nome}:`, margin + 5, yPosition);
+      doc.setTextColor(...darkBlue);
+      doc.text('TOTAL ELETRICIDADE', colX[0], y + 5);
+      doc.setTextColor(...textDark);
+      doc.text(fmtEur(custoAtualElet), colX[3], y + 5);
+      doc.setTextColor(...green);
+      doc.text(fmtEur(resultado.subtotal_eletricidade !== undefined ? resultado.subtotal_eletricidade : resultado.subtotal), colX[4], y + 5);
+      y += 10;
+    }
+
+    if (dt) {
+      checkPage(40);
+      doc.setFillColor(...orangeLight);
+      doc.setDrawColor(...orange);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(margin, y, contentWidth, 38, 2, 2, 'FD');
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...orange);
+      doc.text('CAMPANHA ESPECIAL', margin + 4, y + 7);
 
       doc.setFont('helvetica', 'normal');
-      yPosition += 5;
+      doc.setTextColor(...textDark);
+      doc.setFontSize(8.5);
 
       if (dt.descricao) {
-        doc.text(`${dt.descricao}`, margin + 5, yPosition);
-        yPosition += 5;
+        doc.text(dt.descricao, margin + 4, y + 13);
+        doc.text(`Durante ${dt.duracao_meses} meses, o custo mensal será de ${fmtEur(dt.custo_mensal_com_desconto)} (desconto adicional de`, margin + 4, y + 19);
+        doc.text(`${fmtEur(dt.valor_mensal)}/mês)`, margin + 4, y + 25);
+      } else {
+        doc.text(`Durante ${dt.duracao_meses} meses, o custo mensal será de ${fmtEur(dt.custo_mensal_com_desconto)} (desconto adicional de`, margin + 4, y + 13);
+        doc.text(`${fmtEur(dt.valor_mensal)}/mês)`, margin + 4, y + 19);
       }
 
-      doc.text(`Desconto mensal: €${dt.valor_mensal.toFixed(2)} durante ${dt.duracao_meses} ${dt.duracao_meses === 1 ? 'mês' : 'meses'}`, margin + 5, yPosition);
-      yPosition += 5;
-
-      doc.text(`Custo mensal com campanha: €${dt.custo_mensal_com_desconto.toFixed(2)}`, margin + 5, yPosition);
-      yPosition += 5;
-
-      doc.text(`Custo mensal após campanha: €${dt.custo_mensal_apos_desconto.toFixed(2)}`, margin + 5, yPosition);
-      yPosition += 5;
+      const poupancaCampanha = (resultado.poupanca / data.simulacao.dias_fatura) * 30 + dt.valor_mensal;
+      const poupancaSemCampanha = (resultado.poupanca / data.simulacao.dias_fatura) * 30;
 
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 102, 204);
-      doc.text(`Poupança total no período: €${dt.poupanca_periodo_desconto.toFixed(2)}`, margin + 5, yPosition);
-      doc.setTextColor(...textColor);
+      doc.setFontSize(11);
+      doc.setTextColor(...green);
+      doc.text(`Poupança c/ Campanha: ${fmtEur(poupancaCampanha)}/mês`, margin + 4, y + 31);
+
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...textMuted);
+      doc.text(`Sem campanha: ${fmtEur(poupancaSemCampanha)}/mês`, margin + 4, y + 36);
 
-      if (!dt.disponivel) {
-        yPosition += 5;
-        const requisitos: string[] = [];
-        if (dt.requer_dd && !data.simulacao.debito_direto) requisitos.push('Débito Direto');
-        if (dt.requer_fe && !data.simulacao.fatura_eletronica) requisitos.push('Fatura Eletrónica');
-        if (requisitos.length > 0) {
-          doc.setFontSize(8);
-          doc.text(`Requer adesão a: ${requisitos.join(' e ')}`, margin + 5, yPosition);
-          doc.setFontSize(9);
-        }
+      y += 42;
+    } else {
+      const poupancaMensalCalc = (resultado.poupanca / data.simulacao.dias_fatura) * 30;
+      if (resultado.poupanca > 0) {
+        checkPage(16);
+        doc.setFillColor(...greenLight);
+        doc.setDrawColor(...green);
+        doc.setLineWidth(0.3);
+        doc.rect(margin, y, contentWidth, 14, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(...green);
+        doc.text(`Poupança: ${fmtEur(poupancaMensalCalc)}/mês`, margin + 4, y + 6);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...textMuted);
+        doc.text(`Poupança anual: ${fmtEur(poupancaAnual)}`, margin + 4, y + 11);
+        y += 18;
       }
-
-      yPosition += 10;
     }
+
+    y += 5;
   }
 
-  if (yPosition > pageHeight - 40) {
-    doc.addPage();
+  checkPage(20);
+  doc.setDrawColor(...borderGray);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 6;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...textMuted);
+  const notaText = 'Nota: Esta simulação não considera a tarifa social de energia. Se é beneficiário da tarifa social, consulte os valores específicos junto da sua operadora.';
+  const notaLines = doc.splitTextToSize(notaText, contentWidth);
+  doc.text(notaLines, margin, y);
+  y += notaLines.length * 4.5 + 4;
+
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    drawFooter(p, totalPages);
   }
 
-  const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber;
-  for (let i = 1; i <= currentPage; i++) {
-    doc.setPage(i);
-
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, pageHeight - 25, pageWidth, 25, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text('MPGrupo - Soluções Energéticas', margin, pageHeight - 15);
-    doc.text('+351 928 203 793 | info@mpgrupo.pt | www.mpgrupo.pt', margin, pageHeight - 10);
-
-    doc.setFontSize(8);
-    doc.text(`Gerado em ${data.dataGeracao.toLocaleString('pt-PT')}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-  }
-
-  const fileName = `MPGrupo_Simulacao_${data.simulacao.operadora_atual.replace(/\s+/g, '_')}_${data.dataGeracao.toISOString().split('T')[0]}.pdf`;
+  const consultorNome = (data.userInfo?.nome || 'MPGrupo').replace(/\s+/g, '_');
+  const fileName = `MPGrupo_Simulacao_${consultorNome}_${data.dataGeracao.toISOString().split('T')[0]}.pdf`;
   doc.save(fileName);
 };
