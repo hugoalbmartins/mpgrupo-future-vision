@@ -265,22 +265,22 @@ export const generateSimulationPDF = (data: PDFData): void => {
       });
       y += 7;
 
-      const rawPotUnitAtual = data.simulacao.valor_potencia_diaria_atual;
-      const rawPotUnitDesc = resultado.valor_potencia_diaria;
-      const rawPotTotalAtual = rawPotUnitAtual * data.simulacao.dias_fatura;
-      const rawPotTotalDesc = resultado.custo_total_potencia;
+      const potUnitRaw = resultado.valor_potencia_diaria_raw;
+      const potUnitDesc = resultado.valor_potencia_diaria;
+      const potTotalRaw = potUnitRaw * data.simulacao.dias_fatura;
+      const potTotalDesc = resultado.custo_total_potencia;
+      const potDescontoPct = resultado.desconto_pct_potencia;
+      const eneDescontoPct = resultado.desconto_pct_energia;
 
       const addTableRow = (
         comp: string,
         unit: string,
-        unitLabel: string,
-        precoUnit: number,
-        precoDesc: number,
+        precoRaw: number,
+        precoComDesc: number,
         totalSemDesc: number,
         totalComDesc: number,
         descontoPct: number,
-        rowIndex: number,
-        subLabel?: string
+        rowIndex: number
       ) => {
         checkPage(18);
         if (rowIndex % 2 === 0) {
@@ -302,11 +302,11 @@ export const generateSimulationPDF = (data: PDFData): void => {
 
         doc.setTextColor(...textDark);
         doc.setFontSize(8);
-        doc.text(fmtEur(precoUnit, 6), colX[1], y + 4);
+        doc.text(fmtEur(precoRaw, 6), colX[1], y + 4);
 
         doc.setTextColor(...green);
         doc.setFont('helvetica', 'bold');
-        doc.text(fmtEur(precoDesc, 6), colX[2], y + 4);
+        doc.text(fmtEur(precoComDesc, 6), colX[2], y + 4);
 
         doc.setTextColor(...textDark);
         doc.setFont('helvetica', 'normal');
@@ -326,61 +326,44 @@ export const generateSimulationPDF = (data: PDFData): void => {
         y += descontoPct > 0 ? 13 : 9;
       };
 
-      let potDescontoPct = 0;
-      if (rawPotUnitAtual > 0 && rawPotUnitDesc < rawPotUnitAtual) {
-        potDescontoPct = ((rawPotUnitAtual - rawPotUnitDesc) / rawPotUnitAtual) * 100;
-      }
-
       addTableRow(
         'Potência',
         '€/kW/dia',
-        '',
-        rawPotUnitAtual,
-        rawPotUnitDesc,
-        rawPotTotalAtual,
-        rawPotTotalDesc,
+        potUnitRaw,
+        potUnitDesc,
+        potTotalRaw,
+        potTotalDesc,
         potDescontoPct,
         0
       );
 
       if (data.simulacao.ciclo_horario === 'simples') {
         const kwhSimples = data.simulacao.kwh_simples || 0;
-        const precoAtual = data.simulacao.preco_simples || 0;
+        const precoRaw = resultado.valores_kwh_raw.simples || 0;
         const precoDesc = resultado.valores_kwh.simples || 0;
-        const totalAtual = kwhSimples * precoAtual;
-        const totalDesc = resultado.custos_energia.simples || 0;
-        let eneDesc = 0;
-        if (precoAtual > 0 && precoDesc < precoAtual) eneDesc = ((precoAtual - precoDesc) / precoAtual) * 100;
-        addTableRow('Energia', '€/kWh', '', precoAtual, precoDesc, totalAtual, totalDesc, eneDesc, 1);
+        addTableRow('Energia', '€/kWh', precoRaw, precoDesc, kwhSimples * precoRaw, resultado.custos_energia.simples || 0, eneDescontoPct, 1);
       } else if (data.simulacao.ciclo_horario === 'bi-horario') {
         const kwhV = data.simulacao.kwh_vazio || 0;
         const kwhFV = data.simulacao.kwh_fora_vazio || 0;
-        const pV = data.simulacao.preco_vazio || 0;
-        const pFV = data.simulacao.preco_fora_vazio || 0;
-        const pVd = resultado.valores_kwh.vazio || 0;
-        const pFVd = resultado.valores_kwh.fora_vazio || 0;
-        let descV = 0, descFV = 0;
-        if (pV > 0 && pVd < pV) descV = ((pV - pVd) / pV) * 100;
-        if (pFV > 0 && pFVd < pFV) descFV = ((pFV - pFVd) / pFV) * 100;
-        addTableRow('Energia Vazio', '€/kWh', '', pV, pVd, kwhV * pV, resultado.custos_energia.vazio || 0, descV, 1);
-        addTableRow('Energia Fora Vazio', '€/kWh', '', pFV, pFVd, kwhFV * pFV, resultado.custos_energia.fora_vazio || 0, descFV, 2);
+        const pVRaw = resultado.valores_kwh_raw.vazio || 0;
+        const pFVRaw = resultado.valores_kwh_raw.fora_vazio || 0;
+        const pVDesc = resultado.valores_kwh.vazio || 0;
+        const pFVDesc = resultado.valores_kwh.fora_vazio || 0;
+        addTableRow('Energia Vazio', '€/kWh', pVRaw, pVDesc, kwhV * pVRaw, resultado.custos_energia.vazio || 0, eneDescontoPct, 1);
+        addTableRow('Energia Fora Vazio', '€/kWh', pFVRaw, pFVDesc, kwhFV * pFVRaw, resultado.custos_energia.fora_vazio || 0, eneDescontoPct, 2);
       } else if (data.simulacao.ciclo_horario === 'tri-horario') {
         const kwhV = data.simulacao.kwh_vazio || 0;
         const kwhP = data.simulacao.kwh_ponta || 0;
         const kwhC = data.simulacao.kwh_cheias || 0;
-        const pV = data.simulacao.preco_vazio || 0;
-        const pP = data.simulacao.preco_ponta || 0;
-        const pC = data.simulacao.preco_cheias || 0;
-        const pVd = resultado.valores_kwh.vazio || 0;
-        const pPd = resultado.valores_kwh.ponta || 0;
-        const pCd = resultado.valores_kwh.cheias || 0;
-        let descV = 0, descP = 0, descC = 0;
-        if (pV > 0 && pVd < pV) descV = ((pV - pVd) / pV) * 100;
-        if (pP > 0 && pPd < pP) descP = ((pP - pPd) / pP) * 100;
-        if (pC > 0 && pCd < pC) descC = ((pC - pCd) / pC) * 100;
-        addTableRow('Energia Vazio', '€/kWh', '', pV, pVd, kwhV * pV, resultado.custos_energia.vazio || 0, descV, 1);
-        addTableRow('Energia Ponta', '€/kWh', '', pP, pPd, kwhP * pP, resultado.custos_energia.ponta || 0, descP, 2);
-        addTableRow('Energia Cheias', '€/kWh', '', pC, pCd, kwhC * pC, resultado.custos_energia.cheias || 0, descC, 3);
+        const pVRaw = resultado.valores_kwh_raw.vazio || 0;
+        const pPRaw = resultado.valores_kwh_raw.ponta || 0;
+        const pCRaw = resultado.valores_kwh_raw.cheias || 0;
+        const pVDesc = resultado.valores_kwh.vazio || 0;
+        const pPDesc = resultado.valores_kwh.ponta || 0;
+        const pCDesc = resultado.valores_kwh.cheias || 0;
+        addTableRow('Energia Vazio', '€/kWh', pVRaw, pVDesc, kwhV * pVRaw, resultado.custos_energia.vazio || 0, eneDescontoPct, 1);
+        addTableRow('Energia Ponta', '€/kWh', pPRaw, pPDesc, kwhP * pPRaw, resultado.custos_energia.ponta || 0, eneDescontoPct, 2);
+        addTableRow('Energia Cheias', '€/kWh', pCRaw, pCDesc, kwhC * pCRaw, resultado.custos_energia.cheias || 0, eneDescontoPct, 3);
       }
 
       const custoAtualElet = data.simulacao.tipo_simulacao === 'dual'

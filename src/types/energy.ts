@@ -103,6 +103,9 @@ export interface SimulacaoInput {
 export interface ResultadoComparacao {
   operadora: Operadora;
   valor_potencia_diaria: number;
+  valor_potencia_diaria_raw: number;
+  desconto_pct_potencia: number;
+  desconto_pct_energia: number;
   custo_total_potencia: number;
   custos_energia: {
     simples?: number;
@@ -112,6 +115,13 @@ export interface ResultadoComparacao {
     cheias?: number;
   };
   valores_kwh: {
+    simples?: number;
+    vazio?: number;
+    fora_vazio?: number;
+    ponta?: number;
+    cheias?: number;
+  };
+  valores_kwh_raw: {
     simples?: number;
     vazio?: number;
     fora_vazio?: number;
@@ -136,9 +146,13 @@ export interface ResultadoComparacao {
   subtotal_eletricidade?: number;
   subtotal_gas?: number;
   gas_valor_diario?: number;
+  gas_valor_diario_raw?: number;
   gas_custo_total_diario?: number;
   gas_custo_energia?: number;
   gas_preco_kwh?: number;
+  gas_preco_kwh_raw?: number;
+  desconto_pct_gas_diario?: number;
+  desconto_pct_gas_energia?: number;
 }
 
 export const POTENCIAS_DISPONIVEIS = [

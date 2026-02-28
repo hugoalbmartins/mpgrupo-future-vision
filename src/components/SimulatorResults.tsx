@@ -142,10 +142,14 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
 
     let subtotalEletricidade = 0;
     let valorPotenciaDiaria = 0;
+    let valorPotenciaDiariaRaw = 0;
+    let descontoPctPotencia = 0;
+    let descontoPctEnergia = 0;
     let custoPotencia = 0;
     let custoEnergia = 0;
     const custosEnergia: ResultadoComparacao['custos_energia'] = {};
     const valoresKwh: ResultadoComparacao['valores_kwh'] = {};
+    const valoresKwhRaw: ResultadoComparacao['valores_kwh_raw'] = {};
     let poupancaPotencialDDFE: number | undefined;
 
     if (simulacao.tipo_simulacao === 'eletricidade' || simulacao.tipo_simulacao === 'dual') {
@@ -154,6 +158,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
 
       const potenciasObj = tarifasCiclo.valor_diario_potencias as Record<string, number>;
       valorPotenciaDiaria = potenciasObj[simulacao.potencia.toString()] || 0;
+      valorPotenciaDiariaRaw = valorPotenciaDiaria;
 
       let vKwhSimples = 0, vKwhVazio = 0, vKwhForaVazio = 0, vKwhPonta = 0, vKwhCheias = 0;
 
@@ -168,13 +173,17 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
         vKwhCheias = tarifasCiclo.valor_kwh_cheias;
       }
 
-      const rawPotenciaDiaria = valorPotenciaDiaria;
+      valoresKwhRaw.simples = vKwhSimples || undefined;
+      valoresKwhRaw.vazio = vKwhVazio || undefined;
+      valoresKwhRaw.fora_vazio = vKwhForaVazio || undefined;
+      valoresKwhRaw.ponta = vKwhPonta || undefined;
+      valoresKwhRaw.cheias = vKwhCheias || undefined;
 
       if (descontoEletricidade) {
-        const pctPot = calcularDescontoPct(descontoEletricidade, true);
-        const pctEne = calcularDescontoPct(descontoEletricidade, false);
-        const fPot = 1 - pctPot / 100;
-        const fEne = 1 - pctEne / 100;
+        descontoPctPotencia = calcularDescontoPct(descontoEletricidade, true);
+        descontoPctEnergia = calcularDescontoPct(descontoEletricidade, false);
+        const fPot = 1 - descontoPctPotencia / 100;
+        const fEne = 1 - descontoPctEnergia / 100;
         valorPotenciaDiaria *= fPot;
         vKwhSimples *= fEne;
         vKwhVazio *= fEne;
@@ -210,7 +219,7 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       if (descontoEletricidade && (!simulacao.debito_direto || !simulacao.fatura_eletronica)) {
         const pctDDFEPot = toNum(descontoEletricidade.desconto_dd_fe_potencia);
         const pctDDFEEne = toNum(descontoEletricidade.desconto_dd_fe_energia);
-        const potDDFE = rawPotenciaDiaria * (1 - pctDDFEPot / 100) * simulacao.dias_fatura;
+        const potDDFE = valorPotenciaDiariaRaw * (1 - pctDDFEPot / 100) * simulacao.dias_fatura;
         let eneDDFE = 0;
         if (simulacao.ciclo_horario === 'simples' && 'valor_kwh' in tarifasCiclo) {
           eneDDFE = (simulacao.kwh_simples || 0) * tarifasCiclo.valor_kwh * (1 - pctDDFEEne / 100);
@@ -230,9 +239,13 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
 
     let subtotalGas = 0;
     let gasValorDiario = 0;
+    let gasValorDiarioRaw = 0;
     let gasCustoTotalDiario = 0;
     let gasCustoEnergia = 0;
     let gasPrecoKwh = 0;
+    let gasPrecoKwhRaw = 0;
+    let descontoPctGasDiario = 0;
+    let descontoPctGasEnergia = 0;
 
     if (simulacao.tipo_simulacao === 'gas' || simulacao.tipo_simulacao === 'dual') {
       const tarifasGas = operadora.tarifas?.gas;
@@ -241,11 +254,13 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       const escalaoData = tarifasGas.escaloes?.[escalaoKey];
       gasValorDiario = escalaoData?.valor_diario || 0;
       gasPrecoKwh = escalaoData?.valor_kwh || 0;
+      gasValorDiarioRaw = gasValorDiario;
+      gasPrecoKwhRaw = gasPrecoKwh;
       if (descontoGas) {
-        const pctDiario = calcularDescontoPct(descontoGas, true);
-        const pctEne = calcularDescontoPct(descontoGas, false);
-        gasValorDiario *= (1 - pctDiario / 100);
-        gasPrecoKwh *= (1 - pctEne / 100);
+        descontoPctGasDiario = calcularDescontoPct(descontoGas, true);
+        descontoPctGasEnergia = calcularDescontoPct(descontoGas, false);
+        gasValorDiario *= (1 - descontoPctGasDiario / 100);
+        gasPrecoKwh *= (1 - descontoPctGasEnergia / 100);
       }
       gasCustoTotalDiario = gasValorDiario * simulacao.dias_fatura;
       gasCustoEnergia = (simulacao.gas_kwh || 0) * gasPrecoKwh;
@@ -297,9 +312,13 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
     return {
       operadora,
       valor_potencia_diaria: valorPotenciaDiaria,
+      valor_potencia_diaria_raw: valorPotenciaDiariaRaw,
+      desconto_pct_potencia: descontoPctPotencia,
+      desconto_pct_energia: descontoPctEnergia,
       custo_total_potencia: custoPotencia,
       custos_energia: custosEnergia,
       valores_kwh: valoresKwh,
+      valores_kwh_raw: valoresKwhRaw,
       custo_total_energia: custoEnergia,
       subtotal,
       poupanca,
@@ -308,9 +327,13 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
       subtotal_eletricidade: simulacao.tipo_simulacao === 'dual' ? subtotalEletricidade : undefined,
       subtotal_gas: simulacao.tipo_simulacao === 'dual' ? subtotalGas : undefined,
       gas_valor_diario: simulacao.tipo_simulacao !== 'eletricidade' ? gasValorDiario : undefined,
+      gas_valor_diario_raw: simulacao.tipo_simulacao !== 'eletricidade' ? gasValorDiarioRaw : undefined,
       gas_custo_total_diario: simulacao.tipo_simulacao !== 'eletricidade' ? gasCustoTotalDiario : undefined,
       gas_custo_energia: simulacao.tipo_simulacao !== 'eletricidade' ? gasCustoEnergia : undefined,
       gas_preco_kwh: simulacao.tipo_simulacao !== 'eletricidade' ? gasPrecoKwh : undefined,
+      gas_preco_kwh_raw: simulacao.tipo_simulacao !== 'eletricidade' ? gasPrecoKwhRaw : undefined,
+      desconto_pct_gas_diario: simulacao.tipo_simulacao !== 'eletricidade' ? descontoPctGasDiario : undefined,
+      desconto_pct_gas_energia: simulacao.tipo_simulacao !== 'eletricidade' ? descontoPctGasEnergia : undefined,
     };
   };
 
@@ -498,23 +521,12 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                   const poupancaCampanha = dt ? poupancaMensal + dt.valor_mensal : poupancaMensal;
                   const poupancaSemCampanha = poupancaMensal;
 
-                  const rawPotUnitAtual = simulacao.valor_potencia_diaria_atual;
-                  const rawPotUnitDesc = resultado.valor_potencia_diaria;
-                  const rawPotTotalAtual = rawPotUnitAtual * simulacao.dias_fatura;
-                  const rawPotTotalDesc = resultado.custo_total_potencia;
-                  let potDescontoPct = 0;
-                  if (rawPotUnitAtual > 0 && rawPotUnitDesc < rawPotUnitAtual) {
-                    potDescontoPct = ((rawPotUnitAtual - rawPotUnitDesc) / rawPotUnitAtual) * 100;
-                  }
-
-                  let enePrecoAtual = 0, enePrecoDesc = 0, eneTotalAtual = 0, eneTotalDesc = 0, eneDescontoPct = 0;
-                  if (simulacao.ciclo_horario === 'simples') {
-                    enePrecoAtual = simulacao.preco_simples || 0;
-                    enePrecoDesc = resultado.valores_kwh.simples || 0;
-                    eneTotalAtual = (simulacao.kwh_simples || 0) * enePrecoAtual;
-                    eneTotalDesc = resultado.custos_energia.simples || 0;
-                    if (enePrecoAtual > 0 && enePrecoDesc < enePrecoAtual) eneDescontoPct = ((enePrecoAtual - enePrecoDesc) / enePrecoAtual) * 100;
-                  }
+                  const potUnitRaw = resultado.valor_potencia_diaria_raw;
+                  const potUnitDesc = resultado.valor_potencia_diaria;
+                  const potTotalRaw = potUnitRaw * simulacao.dias_fatura;
+                  const potTotalDesc = resultado.custo_total_potencia;
+                  const potDescontoPct = resultado.desconto_pct_potencia;
+                  const eneDescontoPct = resultado.desconto_pct_energia;
 
                   const custoAtualEletDisplay = simulacao.tipo_simulacao === 'dual'
                     ? custoAtual - custoAtualGas
@@ -645,21 +657,18 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                                   <div className="col-span-2 px-2 py-2">
                                     <div className="font-body font-semibold text-foreground">Potência</div>
                                     <div className="font-body text-cream-muted text-[10px]">(€/kW/dia)</div>
-                                    <div className="font-body text-[10px] text-cream-muted">
-                                      {fmtNum(rawPotUnitAtual, 6)} → <span className="text-green-600">{fmtNum(rawPotUnitDesc, 6)}</span>
-                                    </div>
                                     {potDescontoPct > 0 && (
                                       <div className="font-body text-[10px] text-cream-muted">Desc.: {potDescontoPct.toFixed(0)}%</div>
                                     )}
                                   </div>
                                   <div className="px-1 py-2 text-center font-body text-foreground">
-                                    {fmtNum(rawPotUnitAtual, 6)}
+                                    {fmtNum(potUnitRaw, 6)}
                                   </div>
                                   <div className="px-1 py-2 text-center font-body text-foreground">
-                                    {fmtEur(rawPotTotalAtual)}
+                                    {fmtEur(potTotalRaw)}
                                   </div>
                                   <div className="px-1 py-2 text-center font-body font-semibold text-green-600 dark:text-green-400">
-                                    {fmtEur(rawPotTotalDesc)}
+                                    {fmtEur(potTotalDesc)}
                                   </div>
                                 </div>
 
@@ -668,21 +677,18 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                                     <div className="col-span-2 px-2 py-2">
                                       <div className="font-body font-semibold text-foreground">Energia</div>
                                       <div className="font-body text-cream-muted text-[10px]">(€/kWh)</div>
-                                      <div className="font-body text-[10px] text-cream-muted">
-                                        {fmtNum(enePrecoAtual, 6)} → <span className="text-green-600">{fmtNum(enePrecoDesc, 6)}</span>
-                                      </div>
                                       {eneDescontoPct > 0 && (
                                         <div className="font-body text-[10px] text-cream-muted">Desc.: {eneDescontoPct.toFixed(0)}%</div>
                                       )}
                                     </div>
                                     <div className="px-1 py-2 text-center font-body text-foreground">
-                                      {fmtNum(enePrecoAtual, 6)}
+                                      {fmtNum(resultado.valores_kwh_raw.simples || 0, 6)}
                                     </div>
                                     <div className="px-1 py-2 text-center font-body text-foreground">
-                                      {fmtEur(eneTotalAtual)}
+                                      {fmtEur((simulacao.kwh_simples || 0) * (resultado.valores_kwh_raw.simples || 0))}
                                     </div>
                                     <div className="px-1 py-2 text-center font-body font-semibold text-green-600 dark:text-green-400">
-                                      {fmtEur(eneTotalDesc)}
+                                      {fmtEur(resultado.custos_energia.simples || 0)}
                                     </div>
                                   </div>
                                 )}
@@ -690,47 +696,41 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                                 {simulacao.ciclo_horario === 'bi-horario' && (
                                   <>
                                     {[
-                                      { label: 'Vazio', unit: '€/kWh', precoAtual: simulacao.preco_vazio || 0, precoDesc: resultado.valores_kwh.vazio || 0, kwh: simulacao.kwh_vazio || 0, total: resultado.custos_energia.vazio || 0 },
-                                      { label: 'Fora Vazio', unit: '€/kWh', precoAtual: simulacao.preco_fora_vazio || 0, precoDesc: resultado.valores_kwh.fora_vazio || 0, kwh: simulacao.kwh_fora_vazio || 0, total: resultado.custos_energia.fora_vazio || 0 },
-                                    ].map((row) => {
-                                      const descPct = row.precoAtual > 0 && row.precoDesc < row.precoAtual ? ((row.precoAtual - row.precoDesc) / row.precoAtual) * 100 : 0;
-                                      return (
-                                        <div key={row.label} className="grid grid-cols-5 border-b border-border">
-                                          <div className="col-span-2 px-2 py-2">
-                                            <div className="font-body font-semibold text-foreground">E. {row.label}</div>
-                                            <div className="font-body text-cream-muted text-[10px]">(€/kWh)</div>
-                                            {descPct > 0 && <div className="font-body text-[10px] text-cream-muted">Desc.: {descPct.toFixed(0)}%</div>}
-                                          </div>
-                                          <div className="px-1 py-2 text-center font-body text-foreground">{fmtNum(row.precoAtual, 6)}</div>
-                                          <div className="px-1 py-2 text-center font-body text-foreground">{fmtEur(row.kwh * row.precoAtual)}</div>
-                                          <div className="px-1 py-2 text-center font-body font-semibold text-green-600 dark:text-green-400">{fmtEur(row.total)}</div>
+                                      { label: 'Vazio', precoRaw: resultado.valores_kwh_raw.vazio || 0, precoDesc: resultado.valores_kwh.vazio || 0, kwh: simulacao.kwh_vazio || 0, total: resultado.custos_energia.vazio || 0 },
+                                      { label: 'Fora Vazio', precoRaw: resultado.valores_kwh_raw.fora_vazio || 0, precoDesc: resultado.valores_kwh.fora_vazio || 0, kwh: simulacao.kwh_fora_vazio || 0, total: resultado.custos_energia.fora_vazio || 0 },
+                                    ].map((row) => (
+                                      <div key={row.label} className="grid grid-cols-5 border-b border-border">
+                                        <div className="col-span-2 px-2 py-2">
+                                          <div className="font-body font-semibold text-foreground">E. {row.label}</div>
+                                          <div className="font-body text-cream-muted text-[10px]">(€/kWh)</div>
+                                          {eneDescontoPct > 0 && <div className="font-body text-[10px] text-cream-muted">Desc.: {eneDescontoPct.toFixed(0)}%</div>}
                                         </div>
-                                      );
-                                    })}
+                                        <div className="px-1 py-2 text-center font-body text-foreground">{fmtNum(row.precoRaw, 6)}</div>
+                                        <div className="px-1 py-2 text-center font-body text-foreground">{fmtEur(row.kwh * row.precoRaw)}</div>
+                                        <div className="px-1 py-2 text-center font-body font-semibold text-green-600 dark:text-green-400">{fmtEur(row.total)}</div>
+                                      </div>
+                                    ))}
                                   </>
                                 )}
 
                                 {simulacao.ciclo_horario === 'tri-horario' && (
                                   <>
                                     {[
-                                      { label: 'Vazio', precoAtual: simulacao.preco_vazio || 0, precoDesc: resultado.valores_kwh.vazio || 0, kwh: simulacao.kwh_vazio || 0, total: resultado.custos_energia.vazio || 0 },
-                                      { label: 'Ponta', precoAtual: simulacao.preco_ponta || 0, precoDesc: resultado.valores_kwh.ponta || 0, kwh: simulacao.kwh_ponta || 0, total: resultado.custos_energia.ponta || 0 },
-                                      { label: 'Cheias', precoAtual: simulacao.preco_cheias || 0, precoDesc: resultado.valores_kwh.cheias || 0, kwh: simulacao.kwh_cheias || 0, total: resultado.custos_energia.cheias || 0 },
-                                    ].map((row) => {
-                                      const descPct = row.precoAtual > 0 && row.precoDesc < row.precoAtual ? ((row.precoAtual - row.precoDesc) / row.precoAtual) * 100 : 0;
-                                      return (
-                                        <div key={row.label} className="grid grid-cols-5 border-b border-border">
-                                          <div className="col-span-2 px-2 py-2">
-                                            <div className="font-body font-semibold text-foreground">E. {row.label}</div>
-                                            <div className="font-body text-cream-muted text-[10px]">(€/kWh)</div>
-                                            {descPct > 0 && <div className="font-body text-[10px] text-cream-muted">Desc.: {descPct.toFixed(0)}%</div>}
-                                          </div>
-                                          <div className="px-1 py-2 text-center font-body text-foreground">{fmtNum(row.precoAtual, 6)}</div>
-                                          <div className="px-1 py-2 text-center font-body text-foreground">{fmtEur(row.kwh * row.precoAtual)}</div>
-                                          <div className="px-1 py-2 text-center font-body font-semibold text-green-600 dark:text-green-400">{fmtEur(row.total)}</div>
+                                      { label: 'Vazio', precoRaw: resultado.valores_kwh_raw.vazio || 0, kwh: simulacao.kwh_vazio || 0, total: resultado.custos_energia.vazio || 0 },
+                                      { label: 'Ponta', precoRaw: resultado.valores_kwh_raw.ponta || 0, kwh: simulacao.kwh_ponta || 0, total: resultado.custos_energia.ponta || 0 },
+                                      { label: 'Cheias', precoRaw: resultado.valores_kwh_raw.cheias || 0, kwh: simulacao.kwh_cheias || 0, total: resultado.custos_energia.cheias || 0 },
+                                    ].map((row) => (
+                                      <div key={row.label} className="grid grid-cols-5 border-b border-border">
+                                        <div className="col-span-2 px-2 py-2">
+                                          <div className="font-body font-semibold text-foreground">E. {row.label}</div>
+                                          <div className="font-body text-cream-muted text-[10px]">(€/kWh)</div>
+                                          {eneDescontoPct > 0 && <div className="font-body text-[10px] text-cream-muted">Desc.: {eneDescontoPct.toFixed(0)}%</div>}
                                         </div>
-                                      );
-                                    })}
+                                        <div className="px-1 py-2 text-center font-body text-foreground">{fmtNum(row.precoRaw, 6)}</div>
+                                        <div className="px-1 py-2 text-center font-body text-foreground">{fmtEur(row.kwh * row.precoRaw)}</div>
+                                        <div className="px-1 py-2 text-center font-body font-semibold text-green-600 dark:text-green-400">{fmtEur(row.total)}</div>
+                                      </div>
+                                    ))}
                                   </>
                                 )}
 
