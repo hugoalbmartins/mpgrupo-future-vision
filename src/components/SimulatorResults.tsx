@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulacaoInput, Operadora, ConfiguracaoDesconto, ResultadoComparacao } from '@/types/energy';
 import { supabase } from '@/lib/supabase';
-import { Loader2, TrendingDown, AlertCircle, ArrowLeft, Download, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, TrendingDown, AlertCircle, ArrowLeft, Download, MessageCircle, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateSimulationPDF } from '@/lib/pdfGenerator';
-import { generateWhatsAppMessage, generateWhatsAppAdesaoMessage, openWhatsApp, MPGRUPO_WHATSAPP } from '@/lib/whatsappUtils';
+import { generateWhatsAppAdesaoMessage, openWhatsApp, MPGRUPO_WHATSAPP } from '@/lib/whatsappUtils';
 
 interface SimulatorResultsProps {
   open: boolean;
@@ -399,8 +399,17 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
   };
 
   const handleNoResultsWhatsApp = () => {
-    const message = encodeURIComponent('Olá, Não consegui simulação no site, podem ajudar-me?!');
+    const message = encodeURIComponent('Olá, fiz uma simulação no vosso site mas não consegui encontrar uma opção adequada. Podem ajudar-me a analisar a minha fatura?');
     openWhatsApp(MPGRUPO_WHATSAPP, message);
+  };
+
+  const handleContactForm = () => {
+    onOpenChange(false);
+    setTimeout(() => {
+      window.location.hash = 'contact-fatura';
+      const el = document.getElementById('contact');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 250);
   };
 
   if (loading) {
@@ -487,21 +496,42 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
             );
           })()}
 
-          {resultados.length === 0 ? (
-            <div className="py-10 text-center space-y-4">
-              <AlertCircle className="w-14 h-14 text-gold mx-auto" />
-              <h3 className="font-display text-xl text-foreground">Sem Operadoras Disponíveis</h3>
-              <p className="font-body text-sm text-cream-muted">
-                De momento não temos operadoras configuradas. Os nossos comerciais podem ajudá-lo!
-              </p>
-              <button
-                type="button"
-                onClick={handleNoResultsWhatsApp}
-                className="flex items-center gap-2 mx-auto px-6 py-3 bg-green-500 text-white rounded-xl font-body font-medium hover:bg-green-600 transition-all"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Contactar via WhatsApp
-              </button>
+          {resultados.length === 0 || !temPoupanca ? (
+            <div className="py-8 space-y-5">
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 mx-auto rounded-full bg-gold/10 flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-gold" />
+                </div>
+                <h3 className="font-display text-xl text-foreground">
+                  {resultados.length === 0 ? 'Sem Operadoras Disponíveis' : 'Análise Personalizada Recomendada'}
+                </h3>
+                <p className="font-body text-sm text-cream-muted max-w-sm mx-auto leading-relaxed">
+                  {resultados.length === 0
+                    ? 'Não encontrámos operadoras configuradas para o seu perfil de consumo.'
+                    : 'Com base nos dados introduzidos, as tarifas atuais parecem competitivas. Ainda assim, pode existir uma solução personalizada que faça sentido para si.'}
+                </p>
+                <p className="font-body text-sm text-cream-muted max-w-sm mx-auto">
+                  A nossa equipa pode analisar a sua fatura em detalhe e encontrar a melhor opção para o seu caso.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                <button
+                  type="button"
+                  onClick={handleNoResultsWhatsApp}
+                  className="flex items-center justify-center gap-2.5 px-6 py-3.5 bg-green-600 text-white rounded-xl font-body font-medium hover:bg-green-700 transition-all shadow-md"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Falar connosco pelo WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={handleContactForm}
+                  className="flex items-center justify-center gap-2.5 px-6 py-3.5 border border-gold/50 text-gold rounded-xl font-body font-medium hover:bg-gold/10 transition-all"
+                >
+                  <FileText className="w-5 h-5" />
+                  Pedir análise da minha fatura
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -633,8 +663,28 @@ const SimulatorResults = ({ open, onOpenChange, simulacao, onReset }: SimulatorR
                             </div>
                           </>
                         ) : (
-                          <div className="font-body text-sm text-red-500 font-medium">
-                            Sem poupança face ao atual
+                          <div className="space-y-2">
+                            <p className="font-body text-xs text-cream-muted leading-relaxed">
+                              Esta opção não apresenta poupança direta face ao seu tarifário atual. Quer uma análise personalizada?
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={handleNoResultsWhatsApp}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600/15 text-green-700 dark:text-green-400 border border-green-600/30 rounded-lg font-body text-xs font-medium hover:bg-green-600/25 transition-all"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                WhatsApp
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleContactForm}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 text-gold border border-gold/30 rounded-lg font-body text-xs font-medium hover:bg-gold/20 transition-all"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                Análise da Fatura
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
