@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimulacaoInput, Operadora, ConfiguracaoDesconto, ResultadoComparacao } from '@/types/energy';
 import { supabase } from '@/lib/supabase';
-import { Loader2, TrendingDown, AlertCircle, ArrowLeft, Download, MessageCircle, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Loader as Loader2, TrendingDown, CircleAlert as AlertCircle, ArrowLeft, Download, MessageCircle, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateSimulationPDF } from '@/lib/pdfGenerator';
 import { generateWhatsAppAdesaoMessage, openWhatsApp, MPGRUPO_WHATSAPP } from '@/lib/whatsappUtils';
