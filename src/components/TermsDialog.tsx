@@ -96,7 +96,7 @@ const TermsDialog = ({ open, onOpenChange }: TermsDialogProps) => {
             <section>
               <h3 className="font-display text-lg text-foreground mb-2">10. Contacto</h3>
               <p className="leading-relaxed">
-                Para questões sobre estes Termos de Uso, contacte-nos através de info@mpgrupo.pt ou +351 928 203 793.
+                Para questões sobre estes Termos de Uso, contacte-nos através de info@mpgrupo.pt ou +351 928 203 793 (chamada para a rede móvel nacional).
               </p>
             </section>
           </div>

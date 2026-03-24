@@ -81,6 +81,11 @@ const ContactSection = () => {
                     ) : (
                       <p className="font-body text-cream-muted">{info.content}</p>
                     )}
+                    {info.icon === Phone && (
+                      <p className="font-body text-xs text-cream-muted/60 mt-1">
+                        Chamada para a rede móvel nacional.
+                      </p>
+                    )}
                   </div>
                 </div>
               </motion.div>
